@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   try {
     while (nextUrl) {
-      const tracksRes = await fetch(nextUrl, { headers });
+      const tracksRes: Response = await fetch(nextUrl, { headers });
 
       if (!tracksRes.ok) {
         const text = await tracksRes.text();
