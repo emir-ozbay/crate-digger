@@ -387,10 +387,10 @@ export default function Home() {
           prev.map((t) =>
             t.id === track.id
               ? {
-                  ...t,
-                  bpm: bpm,
-                  bpmStatus: bpm === null ? "error" : "idle",
-                }
+                ...t,
+                bpm: bpm,
+                bpmStatus: bpm === null ? "error" : "idle",
+              }
               : t
           )
         );
@@ -563,12 +563,12 @@ export default function Home() {
         prev.map((s) =>
           s.id === slotId
             ? {
-                ...s,
-                mode: "existing",
-                playlistId: newPlaylist.id,
-                displayName: newPlaylist.name,
-                newName: "",
-              }
+              ...s,
+              mode: "existing",
+              playlistId: newPlaylist.id,
+              displayName: newPlaylist.name,
+              newName: "",
+            }
             : s
         )
       );
@@ -607,8 +607,7 @@ export default function Home() {
     }
 
     console.log(
-      `Sending track "${track.name}" to slot ${slotId} (playlist: ${
-        slot.displayName || slot.playlistId
+      `Sending track "${track.name}" to slot ${slotId} (playlist: ${slot.displayName || slot.playlistId
       }).`
     );
 
@@ -929,47 +928,40 @@ export default function Home() {
     return (
       <>
         <style jsx global>{`
-          ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-          ::-webkit-scrollbar-track {
-            background: #020617;
-          }
-          ::-webkit-scrollbar-thumb {
-            background: #1f2937;
-            border-radius: 999px;
-          }
-          ::-webkit-scrollbar-thumb:hover {
-            background: #4b5563;
-          }
-          body {
-            scrollbar-color: #1f2937 #020617;
-            scrollbar-width: thin;
-          }
-        `}</style>
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #1f2937;
+          border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #4b5563;
+        }
+        body {
+          scrollbar-color: #1f2937 #020617;
+          scrollbar-width: thin;
+        }
+      `}</style>
         <main
           style={{
             minHeight: "100vh",
-            padding: "1.4rem 2rem 0.2rem",
+            padding: "2rem",
             fontFamily: "sans-serif",
             background: "#050816",
             color: "#f9fafb",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
-              marginBottom: "0.4rem",
-            }}
-          >
-            <h1 style={{ fontSize: "1.8rem" }}>Crate Digger</h1>
-          </div>
+          <h1 style={{ fontSize: "1.8rem", marginBottom: "0.4rem" }}>
+            Crate Digger
+          </h1>
           <p style={{ fontSize: "0.9rem" }}>You are not logged in.</p>
           <button
+            type="button"
             onClick={handleLogin}
             style={{
               marginTop: "1rem",
@@ -987,6 +979,7 @@ export default function Home() {
       </>
     );
   }
+
 
   // Only playlists owned by the current user can be used as destinations
   const ownedPlaylists: Playlist[] = currentUserId
@@ -1492,8 +1485,8 @@ export default function Home() {
                                   slot.mode === "existing"
                                     ? !!slot.playlistId
                                     : slot.mode === "new"
-                                    ? !!slot.displayName.trim()
-                                    : false;
+                                      ? !!slot.displayName.trim()
+                                      : false;
                                 const enabled =
                                   slot.mode === "existing" && !!slot.playlistId;
                                 const baseColor =
@@ -1512,8 +1505,8 @@ export default function Home() {
                                 const color = enabled
                                   ? "#020617"
                                   : hasName
-                                  ? "#9ca3af"
-                                  : "#4b5563";
+                                    ? "#9ca3af"
+                                    : "#4b5563";
                                 const borderColor = enabled
                                   ? baseColor
                                   : "#4b5563";
@@ -1544,14 +1537,13 @@ export default function Home() {
                                     }}
                                     title={
                                       enabled
-                                        ? `Send to slot ${slot.id} (${
-                                            slot.displayName ||
-                                            slot.playlistId ||
-                                            "unnamed"
-                                          })`
+                                        ? `Send to slot ${slot.id} (${slot.displayName ||
+                                        slot.playlistId ||
+                                        "unnamed"
+                                        })`
                                         : hasName
-                                        ? `Create/select playlist for slot ${slot.id} first`
-                                        : `Configure slot ${slot.id} in the Destinations section below`
+                                          ? `Create/select playlist for slot ${slot.id} first`
+                                          : `Configure slot ${slot.id} in the Destinations section below`
                                     }
                                   >
                                     {slot.id}
@@ -1669,8 +1661,8 @@ export default function Home() {
                 slot.mode === "existing" && slot.playlistId
                   ? slot.playlistId
                   : slot.mode === "new"
-                  ? "__new__"
-                  : "";
+                    ? "__new__"
+                    : "";
 
               const color = SLOT_COLORS[slot.id] || "#4b5563";
               const isSourcePlaylist =
