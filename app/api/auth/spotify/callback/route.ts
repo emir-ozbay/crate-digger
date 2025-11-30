@@ -1,8 +1,10 @@
+// app/api/auth/spotify/callback/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
-  const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
   const url = req.nextUrl;
   const code = url.searchParams.get("code");
@@ -17,10 +19,8 @@ export async function GET(req: NextRequest) {
     ? `${scheme}://${hostHeader}`
     : process.env.NEXT_PUBLIC_APP_URL || url.origin;
 
-  const redirectUri = `${originFromHost}/api/auth/spotify/callback`;
-
   console.log("CALLBACK originFromHost:", originFromHost);
-  console.log("CALLBACK redirectUri:", redirectUri);
+  console.log("CALLBACK redirectUri (env):", redirectUri);
 
   if (error) {
     console.error("Spotify auth error:", error);
@@ -36,10 +36,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+  if (!clientId || !clientSecret || !redirectUri) {
     console.error("Spotify env vars missing", {
-      hasClientId: !!SPOTIFY_CLIENT_ID,
-      hasSecret: !!SPOTIFY_CLIENT_SECRET,
+      hasClientId: !!clientId,
+      hasSecret: !!clientSecret,
+      hasRedirect: !!redirectUri,
     });
     return NextResponse.redirect(
       `${originFromHost}/?spotify_error=server_config_missing`
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
     });
 
     const basicAuth = Buffer.from(
-      `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
+      `${clientId}:${clientSecret}`
     ).toString("base64");
 
     const tokenRes = await fetch("https://accounts.spotify.com/api/token", {
