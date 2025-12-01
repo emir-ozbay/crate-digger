@@ -19,7 +19,7 @@ type Track = {
   artists: { name: string }[];
   duration_ms: number;
   genres: string[];
-  preview_url: string | null; // Spotify preview, if any
+  preview_url: string | null;
   albumImageUrl: string | null;
   bpm?: number | null;
   bpmStatus?: "idle" | "loading" | "error";
@@ -30,33 +30,27 @@ type DestinationMode = "none" | "existing" | "new";
 type DestinationSlot = {
   id: number; // 1..6
   mode: DestinationMode;
-  playlistId: string | null; // existing playlist ID (if mode === "existing")
-  displayName: string; // what we show in UI
-  newName: string; // typed name if mode === "new"
-  sentTrackIds: string[]; // local dedupe in this session
+  playlistId: string | null;
+  displayName: string;
+  newName: string;
+  sentTrackIds: string[];
 };
 
-// Color coding per destination slot
 const SLOT_COLORS: Record<number, string> = {
-  1: "#22c55e", // green
-  2: "#3b82f6", // blue
-  3: "#eab308", // yellow
-  4: "#f97316", // orange
-  5: "#a855f7", // purple
-  6: "#ec4899", // pink
+  1: "#22c55e",
+  2: "#3b82f6",
+  3: "#eab308",
+  4: "#f97316",
+  5: "#a855f7",
+  6: "#ec4899",
 };
 
-// Simple hook: is viewport width below breakpoint?
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const update = () => {
-      setIsMobile(window.innerWidth < breakpoint);
-    };
-
+    const update = () => setIsMobile(window.innerWidth < breakpoint);
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -81,32 +75,21 @@ export default function Home() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loadingTracks, setLoadingTracks] = useState(false);
 
-  // preview player state
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
 
-  // which track (row/card) is "selected"
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
 
-  // cache of extra previews we got from iTunes: trackId -> url or null (already tried)
   const [previewOverrides, setPreviewOverrides] = useState<
     Record<string, string | null>
   >({});
 
-  // last time we made an iTunes request (for throttling)
   const lastItunesRequestTime = useRef<number | null>(null);
-
-  // Used to prevent race conditions when hammering arrows:
-  // Only the latest preview request is allowed to start audio.
   const previewRequestIdRef = useRef(0);
-
-  // Whether arrow navigation should auto-play the new track
   const followPlaybackRef = useRef(false);
 
-  // AudioContext for BPM detection
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // 6 destination slots at the bottom
   const [destinations, setDestinations] = useState<DestinationSlot[]>(() =>
     Array.from({ length: 6 }, (_, i) => ({
       id: i + 1,
@@ -118,25 +101,17 @@ export default function Home() {
     }))
   );
 
-  // recent send for visual flash: {slotId, trackId}
   const [recentSend, setRecentSend] = useState<{
     slotId: number;
     trackId: string;
   } | null>(null);
 
-  // Auto-remove from source playlist after successful send (or duplicate)
   const [autoRemoveOnSend, setAutoRemoveOnSend] = useState(false);
 
-  // Row refs for auto-scroll (desktop table only): trackId -> <tr>
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
-
-  // ref for tracks container to restore focus
   const tracksContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // show/hide playlist UI (desktop sidebar or mobile overlay)
-  const [showPlaylists, setShowPlaylists] = useState(true); // desktop: visible by default
-
-  // mobile: show/hide destination config sheet
+  const [showPlaylists, setShowPlaylists] = useState(true);
   const [showDestinationsSheet, setShowDestinationsSheet] = useState(false);
 
   const focusTracks = () => {
@@ -145,7 +120,6 @@ export default function Home() {
     }
   };
 
-  // Init AudioContext (client-side only)
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!audioContextRef.current) {
@@ -159,11 +133,9 @@ export default function Home() {
     }
   }, []);
 
-  // Helper: detect BPM from a preview URL using web-audio-beat-detector
   const detectBpmFromUrl = async (url: string): Promise<number | null> => {
     const audioContext = audioContextRef.current;
     if (!audioContext) return null;
-
     try {
       const res = await fetch(url);
       if (!res.ok) {
@@ -173,10 +145,8 @@ export default function Home() {
         );
         return null;
       }
-
       const arrayBuffer = await res.arrayBuffer();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
       const { bpm } = await guess(audioBuffer);
       if (!bpm || !Number.isFinite(bpm)) return null;
       return bpm;
@@ -186,7 +156,6 @@ export default function Home() {
     }
   };
 
-  // Initial playlists fetch
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
@@ -201,7 +170,6 @@ export default function Home() {
           setLoading(false);
           return;
         }
-
         const data = await res.json();
         setPlaylists(data.items || []);
         setCurrentUserId(data.currentUserId || null);
@@ -211,7 +179,6 @@ export default function Home() {
         setLoading(false);
       }
     };
-
     fetchPlaylists();
   }, []);
 
@@ -225,7 +192,6 @@ export default function Home() {
     } catch (err) {
       console.error("Logout error:", err);
     }
-    // Hard reset to clear client state
     window.location.href = "/";
   };
 
@@ -238,12 +204,10 @@ export default function Home() {
     setSelectedTrackId(null);
     followPlaybackRef.current = false;
 
-    // On mobile, hide the shelf after choosing
     if (isMobile) {
       setShowPlaylists(false);
     }
 
-    // stop any playing audio when switching playlists
     if (audioRef.current) {
       previewRequestIdRef.current += 1;
       audioRef.current.pause();
@@ -257,37 +221,32 @@ export default function Home() {
       const res = await fetch(
         `/api/playlist-tracks?playlistId=${encodeURIComponent(playlist.id)}`
       );
-
       if (!res.ok) {
         console.error("Failed to load tracks");
         setLoadingTracks(false);
         return;
       }
-
       const data = await res.json();
-
       const mappedTracks: Track[] = (data.items || [])
         .map((item: any) => {
           const track = item.track;
           if (!track) return null;
           const albumImageUrl =
-            track.album?.images?.[0]?.url ?? null; // album cover
-
+            track.album?.images?.[0]?.url ?? null;
           return {
             id: track.id,
-            uri: track.uri, // Spotify URI needed to add to playlists
+            uri: track.uri,
             name: track.name,
             artists: track.artists || [],
             duration_ms: track.duration_ms,
             genres: item.artist_genres || [],
-            preview_url: track.preview_url ?? null, // Spotify only here
+            preview_url: track.preview_url ?? null,
             albumImageUrl,
             bpm: undefined,
             bpmStatus: "idle",
           } as Track;
         })
         .filter(Boolean) as Track[];
-
       setTracks(mappedTracks);
       setLoadingTracks(false);
     } catch (err) {
@@ -310,12 +269,9 @@ export default function Home() {
   };
 
   const handlePreviewClick = async (track: Track) => {
-    // If clicking the currently playing track -> stop and disable looping
     if (playingTrackId === track.id) {
-      // Cancel any pending async preview for this track
       previewRequestIdRef.current += 1;
       followPlaybackRef.current = false;
-
       if (audioRef.current) {
         audioRef.current.loop = false;
         audioRef.current.pause();
@@ -327,9 +283,8 @@ export default function Home() {
       return;
     }
 
-    // If some OTHER track is currently playing, immediately stop it
     if (playingTrackId && playingTrackId !== track.id && audioRef.current) {
-      previewRequestIdRef.current += 1; // cancel any pending older preview
+      previewRequestIdRef.current += 1;
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current.loop = false;
@@ -338,37 +293,31 @@ export default function Home() {
       setPlayingTrackId(null);
     }
 
-    // New preview request: bump global request id and capture a local copy
     const myRequestId = ++previewRequestIdRef.current;
-
-    // Mark this track as selected when we start playback intent
     setSelectedTrackId(track.id);
 
-    // 1) Check if we already have a URL (Spotify or cached iTunes)
     let url: string | null =
       track.preview_url ||
       (typeof previewOverrides[track.id] === "string"
         ? (previewOverrides[track.id] as string)
         : null);
 
-    // 2) If we already tried iTunes and failed (null cached), stop
     if (!url && previewOverrides[track.id] === null) {
       followPlaybackRef.current = false;
       return;
     }
 
-    // 3) If still no URL, call our /api/itunes-preview endpoint with throttle
     if (!url) {
       const mainArtistName = track.artists?.[0]?.name ?? "";
-
       try {
-        // throttle iTunes calls: keep a minimum gap between requests
         const now = Date.now();
-        const minGap = 300; // ms -> about 3 requests per second max
+        const minGap = 300;
         if (lastItunesRequestTime.current != null) {
           const diff = now - lastItunesRequestTime.current;
           if (diff < minGap) {
-            await new Promise((resolve) => setTimeout(resolve, minGap - diff));
+            await new Promise((resolve) =>
+              setTimeout(resolve, minGap - diff)
+            );
           }
         }
         lastItunesRequestTime.current = Date.now();
@@ -377,14 +326,15 @@ export default function Home() {
           trackName: track.name,
           artistName: mainArtistName,
         });
-
-        const res = await fetch(`/api/itunes-preview?${params.toString()}`);
+        const res = await fetch(
+          `/api/itunes-preview?${params.toString()}`
+        );
         if (res.ok) {
           const data = await res.json();
           url = data.previewUrl ?? null;
           setPreviewOverrides((prev) => ({
             ...prev,
-            [track.id]: url, // string or null
+            [track.id]: url,
           }));
         } else {
           url = null;
@@ -403,48 +353,39 @@ export default function Home() {
       }
     }
 
-    // 4) If still no URL, there's just no preview available
     if (!url) {
       followPlaybackRef.current = false;
       return;
     }
 
-    // Kick off BPM detection in the background if we haven't yet
     if (track.bpmStatus !== "loading" && track.bpm === undefined) {
       setTracks((prev) =>
         prev.map((t) =>
           t.id === track.id ? { ...t, bpmStatus: "loading" } : t
         )
       );
-
       detectBpmFromUrl(url).then((bpm) => {
         setTracks((prev) =>
           prev.map((t) =>
             t.id === track.id
               ? {
-                  ...t,
-                  bpm: bpm,
-                  bpmStatus: bpm === null ? "error" : "idle",
-                }
+                ...t,
+                bpm,
+                bpmStatus: bpm === null ? "error" : "idle",
+              }
               : t
           )
         );
       });
     }
 
-    // Before we actually play: if a newer preview request started, abort this one
-    if (previewRequestIdRef.current !== myRequestId) {
-      return;
-    }
+    if (previewRequestIdRef.current !== myRequestId) return;
 
-    // We're about to start a new preview: navigation should follow playback
     followPlaybackRef.current = true;
 
-    // 5) Play the preview in a loop
     if (!audioRef.current) {
       audioRef.current = new Audio();
     } else {
-      // Hard reset the audio element to avoid leftover loads
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current.loop = false;
@@ -454,45 +395,33 @@ export default function Home() {
 
     audioRef.current.src = url;
     audioRef.current.currentTime = 0;
-    audioRef.current.loop = true; // loop until user hits stop
+    audioRef.current.loop = true;
 
-    // Another safety check just before playing, in case things changed again
-    if (previewRequestIdRef.current !== myRequestId) {
-      return;
-    }
+    if (previewRequestIdRef.current !== myRequestId) return;
 
     audioRef.current
       .play()
       .then(() => {
-        // Only mark as playing if this is still the latest request
         if (previewRequestIdRef.current === myRequestId) {
           setPlayingTrackId(track.id);
         }
       })
       .catch((err: any) => {
-        // AbortError just means a new preview started and interrupted this one
-        if (err?.name === "AbortError") {
-          return;
-        }
+        if (err?.name === "AbortError") return;
         console.error("Audio play error:", err);
-        // If play fails for other reasons, don't keep follow-on-navigation mode
         followPlaybackRef.current = false;
       });
   };
 
-  // Clicking the title/artist area (desktop & mobile): select + toggle preview
   const handleTrackNameClick = (track: Track) => {
     setSelectedTrackId(track.id);
     handlePreviewClick(track);
   };
 
-  // Handlers for destination slots
-
   const handleDestinationSelectChange = (slotId: number, value: string) => {
     setDestinations((prev) =>
       prev.map((slot) => {
         if (slot.id !== slotId) return slot;
-
         if (value === "") {
           return {
             ...slot,
@@ -503,7 +432,6 @@ export default function Home() {
             sentTrackIds: [],
           };
         }
-
         if (value === "__new__") {
           return {
             ...slot,
@@ -513,10 +441,8 @@ export default function Home() {
             sentTrackIds: [],
           };
         }
-
         const pl = playlists.find((p) => p.id === value);
         const playlistChanged = value !== slot.playlistId;
-
         return {
           ...slot,
           mode: "existing",
@@ -562,7 +488,6 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
-
       if (!res.ok) {
         const errorText = await res.text();
         console.error(
@@ -575,9 +500,7 @@ export default function Home() {
         );
         return;
       }
-
       const data = await res.json();
-
       const newPlaylist: Playlist = {
         id: data.id,
         name: data.name,
@@ -586,24 +509,20 @@ export default function Home() {
         ownerId: data.ownerId ?? null,
         ownerName: data.ownerName ?? null,
       };
-
-      // Add new playlist into global playlist list if not already present
       setPlaylists((prev) => {
         if (prev.some((p) => p.id === newPlaylist.id)) return prev;
         return [newPlaylist, ...prev];
       });
-
-      // Switch this slot to existing mode, point to new playlist
       setDestinations((prev) =>
         prev.map((s) =>
           s.id === slotId
             ? {
-                ...s,
-                mode: "existing",
-                playlistId: newPlaylist.id,
-                displayName: newPlaylist.name,
-                newName: "",
-              }
+              ...s,
+              mode: "existing",
+              playlistId: newPlaylist.id,
+              displayName: newPlaylist.name,
+              newName: "",
+            }
             : s
         )
       );
@@ -612,12 +531,10 @@ export default function Home() {
     }
   };
 
-  // Sending a track to a destination: now ONLY to existing playlists
   const handleSendToDestination = async (slotId: number, track: Track) => {
     const slot = destinations.find((s) => s.id === slotId);
     if (!slot) return;
 
-    // Must be an existing playlist with an ID
     if (slot.mode !== "existing" || !slot.playlistId) {
       console.log(
         `Slot ${slotId} has no playlist yet. Select one or create it with the + button first.`
@@ -625,7 +542,6 @@ export default function Home() {
       return;
     }
 
-    // If source and destination playlist are the same, skip send & removal
     if (selectedPlaylistId && slot.playlistId === selectedPlaylistId) {
       console.log(
         `Slot ${slotId}: source and destination playlist are the same. Skipping send.`
@@ -633,7 +549,6 @@ export default function Home() {
       return;
     }
 
-    // Simple local dedupe: if we've already sent this track in this session, do nothing
     if (slot.sentTrackIds.includes(track.id)) {
       console.log(
         `Track "${track.name}" is already processed for slot ${slotId} in this session. Skipping.`
@@ -642,12 +557,11 @@ export default function Home() {
     }
 
     console.log(
-      `Sending track "${track.name}" to slot ${slotId} (playlist: ${
-        slot.displayName || slot.playlistId || "unnamed"
-      }).`
+      `Sending track "${track.name}" to slot ${slotId} (${slot.displayName ||
+      slot.playlistId ||
+      "unnamed"}).`
     );
 
-    // Optimistic flash: fire immediately on click
     setRecentSend({ slotId, trackId: track.id });
     setTimeout(() => {
       setRecentSend((prev) =>
@@ -668,7 +582,6 @@ export default function Home() {
           trackUri: track.uri,
         }),
       });
-
       if (!res.ok) {
         console.error("Failed to add track to playlist");
         return;
@@ -686,7 +599,6 @@ export default function Home() {
         );
       }
 
-      // Auto-remove behavior (even if duplicate in destination)
       if (autoRemoveOnSend) {
         const isSourceOwned =
           !!selectedPlaylistId &&
@@ -703,15 +615,11 @@ export default function Home() {
             : null;
 
         const handleLocalRemovalAndPlayback = () => {
-          // Remove from list
           setTracks((prev) => prev.filter((t) => t.id !== track.id));
-
           if (nextTrack) {
-            // Select and autoplay the next track
             setSelectedTrackId(nextTrack.id);
             handlePreviewClick(nextTrack);
           } else {
-            // No next track left: clear selection and stop playback if this was playing
             if (selectedTrackId === track.id) {
               setSelectedTrackId(null);
             }
@@ -729,7 +637,6 @@ export default function Home() {
         };
 
         if (isSourceOwned) {
-          // Really delete from Spotify playlist
           try {
             const removeRes = await fetch("/api/remove-from-playlist", {
               method: "POST",
@@ -741,7 +648,6 @@ export default function Home() {
                 trackUri: track.uri,
               }),
             });
-
             if (!removeRes.ok) {
               const errText = await removeRes.text();
               console.error(
@@ -756,12 +662,10 @@ export default function Home() {
             console.error("Error calling remove-from-playlist API:", err);
           }
         } else {
-          // Non-owned playlist: keep the local-only removal behavior
           handleLocalRemovalAndPlayback();
         }
       }
 
-      // Mark this track as sent in this slot
       setDestinations((prev) =>
         prev.map((s) =>
           s.id === slotId && !s.sentTrackIds.includes(track.id)
@@ -774,16 +678,12 @@ export default function Home() {
     }
   };
 
-  // KEYBOARD CONTROLS (desktop mostly – works on mobile with keyboard too)
   useEffect(() => {
     const moveSelection = (direction: 1 | -1, shouldPlay: boolean) => {
       if (!tracks.length) return;
-
       const currentIndex = selectedTrackId
         ? tracks.findIndex((t) => t.id === selectedTrackId)
         : -1;
-
-      // If no selection yet and going down, go to first track
       if (currentIndex === -1) {
         if (direction === 1) {
           const first = tracks[0];
@@ -792,23 +692,17 @@ export default function Home() {
         }
         return;
       }
-
       const newIndex = currentIndex + direction;
       if (newIndex < 0 || newIndex >= tracks.length) return;
-
       const newTrack = tracks[newIndex];
       if (!newTrack) return;
-
       setSelectedTrackId(newTrack.id);
-
       if (shouldPlay) {
-        // play the new track
         handlePreviewClick(newTrack);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if focused in inputs / textareas / selects / contentEditable
       const target = e.target as HTMLElement | null;
       if (target) {
         const tag = target.tagName;
@@ -820,16 +714,13 @@ export default function Home() {
         if (isFormField) return;
       }
 
-      // No modifiers for our controls
       const hasModifier = e.altKey || e.ctrlKey || e.metaKey;
       const key = e.key;
 
-      // Number keys 1–6 => send to destination slots
       if (!hasModifier && ["1", "2", "3", "4", "5", "6"].includes(key)) {
         if (!selectedTrackId) return;
         const track = tracks.find((t) => t.id === selectedTrackId);
         if (!track) return;
-
         const slotId = parseInt(key, 10);
         handleSendToDestination(slotId, track);
         e.preventDefault();
@@ -838,14 +729,10 @@ export default function Home() {
 
       if (key === "ArrowDown") {
         if (!tracks.length) return;
-
         const isSelected = !!selectedTrackId;
-
         if (!isSelected) {
-          // No selection yet: down selects first track, no auto-play
           moveSelection(1, false);
         } else {
-          // Follow playback intent using ref (not React state)
           moveSelection(1, followPlaybackRef.current);
         }
         e.preventDefault();
@@ -854,23 +741,19 @@ export default function Home() {
 
       if (key === "ArrowUp") {
         if (!tracks.length || !selectedTrackId) return;
-
         moveSelection(-1, followPlaybackRef.current);
         e.preventDefault();
         return;
       }
 
-      // Space => play/pause selected track
       if (key === " " || key === "Spacebar") {
         if (!selectedTrackId && !playingTrackId) return;
-
         let track: Track | undefined;
         if (selectedTrackId) {
           track = tracks.find((t) => t.id === selectedTrackId);
         } else if (playingTrackId) {
           track = tracks.find((t) => t.id === playingTrackId);
         }
-
         if (track) {
           handlePreviewClick(track);
           e.preventDefault();
@@ -878,7 +761,6 @@ export default function Home() {
         return;
       }
 
-      // Left / Right => seek ±2s in current playing track
       if (key === "ArrowLeft") {
         if (audioRef.current && playingTrackId) {
           const current = audioRef.current.currentTime || 0;
@@ -907,7 +789,6 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [tracks, selectedTrackId, playingTrackId]);
 
-  // Auto-scroll selected row into view when selection changes (desktop only)
   useEffect(() => {
     if (!selectedTrackId) return;
     const row = rowRefs.current[selectedTrackId];
@@ -920,7 +801,6 @@ export default function Home() {
     return (
       <>
         <style jsx global>{`
-          /* Dark scrollbars (WebKit) */
           ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -935,8 +815,6 @@ export default function Home() {
           ::-webkit-scrollbar-thumb:hover {
             background: #4b5563;
           }
-
-          /* Firefox scrollbars */
           body {
             scrollbar-color: #1f2937 #020617;
             scrollbar-width: thin;
@@ -1016,27 +894,25 @@ export default function Home() {
     );
   }
 
-  // Only playlists owned by the current user can be used as destinations
   const ownedPlaylists: Playlist[] = currentUserId
     ? playlists.filter((pl) => pl.ownerId === currentUserId)
     : [];
 
-  // Layout styles that change on mobile vs desktop
   const mainLayoutWrapperStyle = isMobile
     ? {
-        display: "flex",
-        flexDirection: "column" as const,
-        gap: "0.9rem",
-        marginTop: "0.9rem",
-      }
+      display: "flex",
+      flexDirection: "column" as const,
+      gap: "0.9rem",
+      marginTop: "0.9rem",
+    }
     : {
-        display: "flex",
-        gap: "1.25rem",
-        marginTop: "0.75rem",
-      };
+      display: "flex",
+      gap: "1.25rem",
+      marginTop: "0.75rem",
+    };
 
   const playlistPanelStyle = {
-    flex: "0 0 260px",
+    flex: "0 0 300px", // ~15% wider than before
     maxHeight: "82vh",
     overflowY: "auto" as const,
     border: "1px solid #1f2933",
@@ -1047,25 +923,23 @@ export default function Home() {
 
   const tracksPanelStyle = isMobile
     ? {
-        flex: 1,
-        maxHeight: "calc(100vh - 220px)",
-        overflowY: "auto" as const,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.7rem 0.9rem 0.9rem",
-        background: "#0b1020",
-        outline: "none",
-      }
+      flex: 1,
+      border: "1px solid #1f2933",
+      borderRadius: "0.75rem",
+      padding: "0.7rem 0.9rem 0.9rem",
+      background: "#0b1020",
+      outline: "none",
+    }
     : {
-        flex: 1,
-        maxHeight: "82vh",
-        overflowY: "auto" as const,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.7rem 0.9rem",
-        background: "#0b1020",
-        outline: "none",
-      };
+      flex: 1,
+      maxHeight: "82vh",
+      overflowY: "auto" as const,
+      border: "1px solid #1f2933",
+      borderRadius: "0.75rem",
+      padding: "0.7rem 0.9rem",
+      background: "#0b1020",
+      outline: "none",
+    };
 
   const mobilePlaylistOverlayStyle = {
     position: "fixed" as const,
@@ -1109,7 +983,7 @@ export default function Home() {
 
   const mobileDestGridStyle = {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))", // 3 columns, 2 rows
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: "0.45rem",
     marginTop: "0.4rem",
   };
@@ -1138,6 +1012,7 @@ export default function Home() {
     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
       {playlists.map((pl) => {
         const isSelected = pl.id === selectedPlaylistId;
+        const ownerName = pl.ownerName;
         return (
           <li
             key={pl.id}
@@ -1163,23 +1038,50 @@ export default function Home() {
                 src={pl.images[0].url}
                 alt={pl.name}
                 style={{
-                  width: "34px",
-                  height: "34px",
+                  width: "44px", // ~30% bigger than 34px
+                  height: "44px",
                   objectFit: "cover",
-                  borderRadius: "0.35rem",
-                  marginRight: "0.55rem",
+                  borderRadius: "0.4rem",
+                  marginRight: "0.6rem",
+                  flexShrink: 0,
                 }}
               />
             )}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: "0.9rem",
-                  fontWeight: 500,
-                  lineHeight: 1.2,
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: "0.3rem",
+                  marginBottom: "0.02rem",
                 }}
               >
-                {pl.name}
+                <span
+                  style={{
+                    fontSize: "0.9rem",
+                    fontWeight: 500,
+                    lineHeight: 1.2,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {pl.name}
+                </span>
+                {ownerName && (
+                  <span
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "8rem",
+                    }}
+                  >
+                    · {ownerName}
+                  </span>
+                )}
               </div>
               <div
                 style={{
@@ -1189,16 +1091,6 @@ export default function Home() {
               >
                 {pl.tracks?.total ?? 0} tracks
               </div>
-              {pl.ownerName && (
-                <div
-                  style={{
-                    fontSize: "0.7rem",
-                    color: "#6b7280",
-                  }}
-                >
-                  by {pl.ownerName}
-                </div>
-              )}
             </div>
           </li>
         );
@@ -1223,12 +1115,21 @@ export default function Home() {
           slot.mode === "existing" && slot.playlistId
             ? slot.playlistId
             : slot.mode === "new"
-            ? "__new__"
-            : "";
+              ? "__new__"
+              : "";
 
         const color = SLOT_COLORS[slot.id] || "#4b5563";
         const isSourcePlaylist =
           !!selectedPlaylistId && slot.playlistId === selectedPlaylistId;
+
+        const selectedPlaylist = slot.playlistId
+          ? playlists.find((pl) => pl.id === slot.playlistId)
+          : undefined;
+
+        const coverUrl =
+          selectedPlaylist?.images && selectedPlaylist.images[0]
+            ? selectedPlaylist.images[0].url
+            : null
 
         return (
           <div
@@ -1256,6 +1157,65 @@ export default function Home() {
                 background: color,
               }}
             />
+
+            {/* Playlist cover + slot info */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                marginBottom: "0.4rem",
+              }}
+            >
+              <div
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "0.45rem",
+                  background: "#020617",
+                  border: "1px solid #1f2933",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {coverUrl && (
+                  <img
+                    src={coverUrl}
+                    alt={selectedPlaylist?.name || "Playlist cover"}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                )}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#e5e7eb",
+                    fontWeight: 500,
+                  }}
+                >
+                  Slot {slot.id}
+                </div>
+                {slot.displayName && (
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#9ca3af",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "160px",
+                    }}
+                  >
+                    {slot.displayName}
+                  </div>
+                )}
+              </div>
+            </div>
 
             <select
               value={selectValue}
@@ -1285,8 +1245,6 @@ export default function Home() {
                 ))}
               </optgroup>
 
-              {/* If we created a new playlist this session, but it's not in ownedPlaylists yet,
-                  still show it as a selectable option */}
               {slot.mode === "existing" &&
                 slot.playlistId &&
                 !ownedHasPlaylist && (
@@ -1377,7 +1335,6 @@ export default function Home() {
   return (
     <>
       <style jsx global>{`
-        /* Dark scrollbars (WebKit) */
         ::-webkit-scrollbar {
           width: 8px;
           height: 8px;
@@ -1391,8 +1348,6 @@ export default function Home() {
         ::-webkit-scrollbar-thumb:hover {
           background: #4b5563;
         }
-
-        /* Firefox scrollbars */
         body {
           scrollbar-color: #1f2937 #020617;
           scrollbar-width: thin;
@@ -1408,7 +1363,6 @@ export default function Home() {
           paddingBottom: isMobile ? "4.2rem" : "1.4rem",
         }}
       >
-        {/* Top bar: title + logout */}
         <div
           style={{
             display: "flex",
@@ -1438,7 +1392,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* MOBILE: playlist overlay shelf */}
         {isMobile && (
           <div style={mobilePlaylistOverlayStyle}>
             <div style={mobilePlaylistHeaderStyle}>
@@ -1482,7 +1435,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* MOBILE: destination configuration bottom sheet */}
         {isMobile && (
           <div style={mobileDestSheetOverlayStyle}>
             <div style={mobileDestSheetStyle}>
@@ -1546,9 +1498,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Main layout */}
         <div style={mainLayoutWrapperStyle}>
-          {/* DESKTOP: playlists sidebar */}
           {!isMobile && showPlaylists && (
             <div style={playlistPanelStyle}>
               <h2
@@ -1564,13 +1514,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* Tracks */}
-          <div
-            ref={tracksContainerRef}
-            tabIndex={-1}
-            style={tracksPanelStyle}
-          >
-            {/* Header row for tracks + playlists toggle + Remove on send */}
+          <div ref={tracksContainerRef} tabIndex={-1} style={tracksPanelStyle}>
             <div
               style={{
                 display: "flex",
@@ -1589,33 +1533,43 @@ export default function Home() {
                   flexWrap: "wrap",
                 }}
               >
-                <h2
-                  style={{
-                    fontSize: "0.95rem",
-                    margin: 0,
-                    color: "#9ca3af",
-                  }}
-                >
-                  {selectedPlaylistName
-                    ? `Tracks in "${selectedPlaylistName}"`
-                    : "No playlist selected"}
-                </h2>
-
-                <button
-                  onClick={() => setShowPlaylists((prev) => !prev)}
-                  style={{
-                    padding: "0.32rem 0.7rem",
-                    borderRadius: "999px",
-                    border: "1px solid #4b5563",
-                    background: "#0b1020",
-                    color: "#e5e7eb",
-                    fontSize: "0.78rem",
-                    cursor: "pointer",
-                    fontWeight: 500,
-                  }}
-                >
-                  {showPlaylists ? "Hide playlists" : "Show playlists"}
-                </button>
+                {selectedPlaylistName ? (
+                  <button
+                    onClick={() => setShowPlaylists((prev) => !prev)}
+                    style={{
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: isMobile ? "1rem" : "1.05rem",
+                        fontWeight: 600,
+                        color: "#e5e7eb",
+                      }}
+                    >
+                      {selectedPlaylistName}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowPlaylists(true)}
+                    style={{
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
+                      color: "#9ca3af",
+                      textDecoration: "underline",
+                      textDecorationStyle: "dotted",
+                    }}
+                  >
+                    Select a playlist
+                  </button>
+                )}
               </div>
 
               <label
@@ -1658,12 +1612,10 @@ export default function Home() {
 
             {!selectedPlaylistId && (
               <p style={{ color: "#9ca3af", fontSize: "0.85rem" }}>
-                Choose a playlist from{" "}
-                {isMobile ? "the playlist button" : "the sidebar"}.
+                Tap <strong>Select a playlist</strong> above to start.
               </p>
             )}
 
-            {/* Track list: desktop = table, mobile = cards */}
             {!loadingTracks && selectedPlaylistId && tracks.length > 0 && (
               <>
                 {!isMobile && (
@@ -1757,10 +1709,8 @@ export default function Home() {
                       {tracks.map((t, index) => {
                         const isPlaying = t.id === playingTrackId;
                         const isSelectedTrack = t.id === selectedTrackId;
-
                         const isActiveForSpotify =
                           t.id === selectedTrackId || t.id === playingTrackId;
-
                         return (
                           <tr
                             key={t.id || `${index}-${t.name}`}
@@ -1782,7 +1732,6 @@ export default function Home() {
                             >
                               {index + 1}
                             </td>
-                            {/* Preview button */}
                             <td
                               style={{
                                 padding: "0.28rem 0.35rem",
@@ -1810,7 +1759,6 @@ export default function Home() {
                                 {isPlaying ? "⏹" : "▶"}
                               </button>
                             </td>
-                            {/* Title + Album Cover + Artist (clickable for preview) */}
                             <td
                               onClick={() => handleTrackNameClick(t)}
                               style={{
@@ -1872,7 +1820,6 @@ export default function Home() {
                                 </div>
                               </div>
                             </td>
-                            {/* Destination buttons (3x2 grid) */}
                             <td
                               style={{
                                 padding: "0.28rem 0.35rem",
@@ -1899,8 +1846,8 @@ export default function Home() {
                                       slot.mode === "existing"
                                         ? !!slot.playlistId
                                         : slot.mode === "new"
-                                        ? !!slot.displayName.trim()
-                                        : false;
+                                          ? !!slot.displayName.trim()
+                                          : false;
                                     const enabled =
                                       slot.mode === "existing" &&
                                       !!slot.playlistId;
@@ -1920,8 +1867,8 @@ export default function Home() {
                                     const color = enabled
                                       ? "#020617"
                                       : hasName
-                                      ? "#9ca3af"
-                                      : "#4b5563";
+                                        ? "#9ca3af"
+                                        : "#4b5563";
                                     const borderColor = enabled
                                       ? baseColor
                                       : "#4b5563";
@@ -1954,14 +1901,13 @@ export default function Home() {
                                         }}
                                         title={
                                           enabled
-                                            ? `Send to slot ${slot.id} (${
-                                                slot.displayName ||
-                                                slot.playlistId ||
-                                                "unnamed"
-                                              })`
+                                            ? `Send to slot ${slot.id} (${slot.displayName ||
+                                            slot.playlistId ||
+                                            "unnamed"
+                                            })`
                                             : hasName
-                                            ? `Create/select playlist for slot ${slot.id} first`
-                                            : `Configure slot ${slot.id} in the Destinations section below`
+                                              ? `Create/select playlist for slot ${slot.id} first`
+                                              : `Configure slot ${slot.id} in the Destinations section below`
                                         }
                                       >
                                         {slot.id}
@@ -1971,7 +1917,6 @@ export default function Home() {
                                 </div>
                               )}
                             </td>
-                            {/* BPM */}
                             <td
                               style={{
                                 padding: "0.28rem 0.35rem",
@@ -1994,7 +1939,6 @@ export default function Home() {
                                   <span style={{ color: "#4b5563" }}>–</span>
                                 )}
                             </td>
-                            {/* Genres */}
                             <td
                               style={{
                                 padding: "0.28rem 0.35rem 0.28rem 1.1rem",
@@ -2010,7 +1954,6 @@ export default function Home() {
                             >
                               {formatGenres(t.genres)}
                             </td>
-                            {/* Spotify open button */}
                             <td
                               style={{
                                 padding: "0.28rem 0.35rem",
@@ -2023,7 +1966,6 @@ export default function Home() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    // Open in same tab to avoid extra blank tab
                                     window.location.href =
                                       `https://open.spotify.com/track/${t.id}`;
                                   }}
@@ -2051,7 +1993,6 @@ export default function Home() {
                   </table>
                 )}
 
-                {/* MOBILE: card layout, no track numbers or destination column */}
                 {isMobile && (
                   <div
                     style={{
@@ -2066,7 +2007,6 @@ export default function Home() {
                       const isSelectedTrack = t.id === selectedTrackId;
                       const isActiveForSpotify =
                         t.id === selectedTrackId || t.id === playingTrackId;
-
                       return (
                         <div
                           key={t.id || `${index}-${t.name}`}
@@ -2086,125 +2026,122 @@ export default function Home() {
                           <div
                             style={{
                               display: "flex",
-                              alignItems: "center",
-                              gap: "0.7rem",
+                              alignItems: "flex-start",
+                              justifyContent: "space-between",
+                              gap: "0.6rem",
                             }}
                           >
                             <div
                               style={{
-                                position: "relative",
-                                flexShrink: 0,
-                              }}
-                            >
-                              {t.albumImageUrl && (
-                                <img
-                                  src={t.albumImageUrl}
-                                  alt={t.name}
-                                  style={{
-                                    width: "76px", // ~40% bigger
-                                    height: "76px",
-                                    borderRadius: "0.6rem",
-                                    objectFit: "cover",
-                                  }}
-                                />
-                              )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedTrackId(t.id);
-                                  handlePreviewClick(t);
-                                }}
-                                style={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  margin: "auto",
-                                  width: "36px", // ~40% bigger
-                                  height: "36px",
-                                  borderRadius: "999px",
-                                  border: "1px solid rgba(15,23,42,0.9)",
-                                  background: isPlaying
-                                    ? "rgba(15,23,42,0.88)"
-                                    : "rgba(15,23,42,0.78)",
-                                  color: "#f9fafb",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: "0.8rem",
-                                  cursor: "pointer",
-                                  boxShadow:
-                                    "0 0 0 1px rgba(15,23,42,0.8), 0 4px 12px rgba(0,0,0,0.8)",
-                                }}
-                              >
-                                {isPlaying ? "⏹" : "▶"}
-                              </button>
-                            </div>
-                            <div
-                              style={{
-                                flex: 1,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.6rem",
                                 minWidth: 0,
-                                overflow: "hidden",
                               }}
                             >
                               <div
                                 style={{
-                                  fontWeight: 500,
-                                  fontSize: "0.95rem",
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  marginBottom: "0.06rem",
+                                  position: "relative",
+                                  flexShrink: 0,
                                 }}
                               >
-                                {t.name}
+                                {t.albumImageUrl && (
+                                  <img
+                                    src={t.albumImageUrl}
+                                    alt={t.name}
+                                    style={{
+                                      width: "60px", // ~20% smaller than previous 76px
+                                      height: "60px",
+                                      borderRadius: "0.6rem",
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTrackId(t.id);
+                                    handlePreviewClick(t);
+                                  }}
+                                  style={{
+                                    position: "absolute",
+                                    inset: 0,
+                                    margin: "auto",
+                                    width: "30px",
+                                    height: "30px",
+                                    borderRadius: "999px",
+                                    border: "none",
+                                    background: "rgba(15,23,42,0.78)",
+                                    color: "#f9fafb",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: "0.85rem",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {isPlaying ? "⏹" : "▶"}
+                                </button>
                               </div>
                               <div
                                 style={{
-                                  fontSize: "0.8rem",
-                                  color: "#9ca3af",
-                                  whiteSpace: "nowrap",
+                                  flex: 1,
+                                  minWidth: 0,
                                   overflow: "hidden",
-                                  textOverflow: "ellipsis",
                                 }}
                               >
-                                {t.artists.map((a) => a.name).join(", ")}
-                              </div>
-                              <div
-                                style={{
-                                  marginTop: "0.25rem",
-                                  fontSize: "0.7rem",
-                                  color: "#6b7280",
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {t.bpmStatus === "loading"
-                                  ? "Detecting BPM… · "
-                                  : t.bpm != null &&
+                                <div
+                                  style={{
+                                    fontWeight: 500,
+                                    fontSize: "0.95rem",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    marginBottom: "0.06rem",
+                                  }}
+                                >
+                                  {t.name}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: "0.8rem",
+                                    color: "#9ca3af",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                >
+                                  {t.artists.map((a) => a.name).join(", ")}
+                                </div>
+                                <div
+                                  style={{
+                                    marginTop: "0.25rem",
+                                    fontSize: "0.7rem",
+                                    color: "#6b7280",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                >
+                                  {t.bpmStatus === "loading"
+                                    ? "Detecting BPM… · "
+                                    : t.bpm != null &&
                                     Number.isFinite(t.bpm) &&
                                     `${Math.round(t.bpm)} BPM · `}
-                                {formatGenres(t.genres)}
+                                  {formatGenres(t.genres)}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "flex-end",
-                              marginTop: "0.05rem",
-                            }}
-                          >
+
                             {isActiveForSpotify && t.id && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  // Same-tab navigation to avoid blank tab on mobile
                                   window.location.href =
                                     `https://open.spotify.com/track/${t.id}`;
                                 }}
                                 style={{
-                                  padding: "0.18rem 0.55rem",
+                                  padding: "0.2rem 0.55rem",
                                   borderRadius: "999px",
                                   border: "1px solid #22c55e",
                                   background: "#022c22",
@@ -2213,6 +2150,7 @@ export default function Home() {
                                   cursor: "pointer",
                                   fontWeight: 600,
                                   whiteSpace: "nowrap",
+                                  alignSelf: "flex-start",
                                 }}
                                 title="Open in Spotify"
                               >
@@ -2230,7 +2168,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* DESKTOP: Destinations panel at bottom */}
         {!isMobile && (
           <div
             style={{
@@ -2243,170 +2180,165 @@ export default function Home() {
           </div>
         )}
 
-        {/* MOBILE: destination pad + "sheet" trigger at bottom */}
         {isMobile && (
-          <>
-            {/* Fixed pad with 6 slots */}
-            <div style={mobileDestPadStyle}>
+          <div style={mobileDestPadStyle}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "0.25rem",
+                gap: "0.5rem",
+              }}
+            >
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "0.25rem",
-                  gap: "0.5rem",
+                  flexDirection: "column",
+                  gap: "0.05rem",
                 }}
               >
-                <div
+                <span
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.05rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: "0.8rem",
-                      color: "#e5e7eb",
-                    }}
-                  >
-                    Destinations
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "0.7rem",
-                      color: "#9ca3af",
-                    }}
-                  >
-                    Tap a slot to send the active track.
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowDestinationsSheet(true)}
-                  style={{
-                    padding: "0.28rem 0.7rem",
-                    borderRadius: "999px",
-                    border: "1px solid #4b5563",
-                    background: "#020617",
+                    fontSize: "0.8rem",
                     color: "#e5e7eb",
-                    fontSize: "0.75rem",
-                    cursor: "pointer",
-                    fontWeight: 500,
-                    whiteSpace: "nowrap",
                   }}
                 >
-                  Configure
-                </button>
+                  Destinations
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#9ca3af",
+                  }}
+                >
+                  Tap a slot to send the active track.
+                </span>
               </div>
-              <div style={mobileDestGridStyle}>
-                {destinations.map((slot) => {
-                  const activeTrack = getActiveTrack();
-                  const hasName =
-                    slot.mode === "existing"
-                      ? !!slot.playlistId
-                      : slot.mode === "new"
+              <button
+                onClick={() => setShowDestinationsSheet(true)}
+                style={{
+                  padding: "0.28rem 0.7rem",
+                  borderRadius: "999px",
+                  border: "1px solid #4b5563",
+                  background: "#020617",
+                  color: "#e5e7eb",
+                  fontSize: "0.75rem",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Configure
+              </button>
+            </div>
+            <div style={mobileDestGridStyle}>
+              {destinations.map((slot) => {
+                const activeTrack = getActiveTrack();
+                const hasName =
+                  slot.mode === "existing"
+                    ? !!slot.playlistId
+                    : slot.mode === "new"
                       ? !!slot.displayName.trim()
                       : false;
 
-                  const isSourcePlaylist =
-                    !!selectedPlaylistId &&
-                    slot.playlistId === selectedPlaylistId;
+                const isSourcePlaylist =
+                  !!selectedPlaylistId &&
+                  slot.playlistId === selectedPlaylistId;
 
-                  const enabled =
-                    slot.mode === "existing" &&
-                    !!slot.playlistId &&
-                    !isSourcePlaylist;
+                const enabled =
+                  slot.mode === "existing" &&
+                  !!slot.playlistId &&
+                  !isSourcePlaylist;
 
-                  const baseColor = SLOT_COLORS[slot.id] || "#4b5563";
+                const baseColor = SLOT_COLORS[slot.id] || "#4b5563";
 
-                  const isRecentlySent =
-                    activeTrack &&
-                    recentSend &&
-                    recentSend.slotId === slot.id &&
-                    recentSend.trackId === activeTrack.id;
+                const isRecentlySent =
+                  activeTrack &&
+                  recentSend &&
+                  recentSend.slotId === slot.id &&
+                  recentSend.trackId === activeTrack.id;
 
-                  const background = enabled
-                    ? isRecentlySent
-                      ? "#f9fafb"
-                      : baseColor
-                    : "#020617";
-                  const color = enabled
-                    ? "#020617"
-                    : hasName
+                const background = enabled
+                  ? isRecentlySent
+                    ? "#f9fafb"
+                    : baseColor
+                  : "#020617";
+                const color = enabled
+                  ? "#020617"
+                  : hasName
                     ? "#9ca3af"
                     : "#4b5563";
-                  const borderColor = enabled ? baseColor : "#4b5563";
+                const borderColor = enabled ? baseColor : "#4b5563";
 
-                  const label =
-                    slot.displayName ||
-                    (hasName ? "(unnamed)" : "No playlist");
+                const label =
+                  slot.displayName ||
+                  (hasName ? "(unnamed)" : "No playlist");
 
-                  return (
-                    <button
-                      key={slot.id}
-                      onClick={() => {
-                        if (!enabled) return;
-                        const track = getActiveTrack();
-                        if (!track) {
-                          console.log("No active track selected to send.");
-                          return;
-                        }
-                        handleSendToDestination(slot.id, track);
-                      }}
+                return (
+                  <button
+                    key={slot.id}
+                    onClick={() => {
+                      if (!enabled) return;
+                      const track = getActiveTrack();
+                      if (!track) {
+                        console.log("No active track selected to send.");
+                        return;
+                      }
+                      handleSendToDestination(slot.id, track);
+                    }}
+                    style={{
+                      padding: "0.4rem 0.4rem 0.45rem",
+                      borderRadius: "0.6rem",
+                      border: `1px solid ${borderColor}`,
+                      background,
+                      color,
+                      cursor: enabled ? "pointer" : "default",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      justifyContent: "center",
+                      transition: "background 0.15s ease, transform 0.1s ease",
+                      transform: isRecentlySent ? "scale(1.03)" : "scale(1)",
+                    }}
+                  >
+                    <span
                       style={{
-                        padding: "0.4rem 0.4rem 0.45rem",
-                        borderRadius: "0.6rem",
-                        border: `1px solid ${borderColor}`,
-                        background,
-                        color,
-                        cursor: enabled ? "pointer" : "default",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        justifyContent: "center",
-                        transition:
-                          "background 0.15s ease, transform 0.1s ease",
-                        transform: isRecentlySent ? "scale(1.03)" : "scale(1)",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        marginBottom: "0.08rem",
                       }}
                     >
+                      Slot {slot.id}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.72rem",
+                        opacity: enabled ? 0.95 : 0.7,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: "100%",
+                      }}
+                    >
+                      {label}
+                    </span>
+                    {isSourcePlaylist && (
                       <span
                         style={{
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          marginBottom: "0.08rem",
+                          marginTop: "0.05rem",
+                          fontSize: "0.7rem",
+                          color: "#fca5a5",
                         }}
                       >
-                        Slot {slot.id}
+                        Source playlist
                       </span>
-                      <span
-                        style={{
-                          fontSize: "0.72rem",
-                          opacity: enabled ? 0.95 : 0.7,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: "100%",
-                        }}
-                      >
-                        {label}
-                      </span>
-                      {isSourcePlaylist && (
-                        <span
-                          style={{
-                            marginTop: "0.05rem",
-                            fontSize: "0.7rem",
-                            color: "#fca5a5",
-                          }}
-                        >
-                          Source playlist
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          </>
+          </div>
         )}
       </main>
     </>
