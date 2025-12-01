@@ -85,7 +85,7 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
 
-  // which track (row) is "selected" – used to show destination buttons
+  // which track (row/card) is "selected"
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
 
   // cache of extra previews we got from iTunes: trackId -> url or null (already tried)
@@ -127,7 +127,7 @@ export default function Home() {
   // Auto-remove from source playlist after successful send (or duplicate)
   const [autoRemoveOnSend, setAutoRemoveOnSend] = useState(false);
 
-  // Row refs for auto-scroll: trackId -> <tr>
+  // Row refs for auto-scroll (desktop table only): trackId -> <tr>
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   // ref for tracks container to restore focus
@@ -135,6 +135,9 @@ export default function Home() {
 
   // show/hide playlist UI (desktop sidebar or mobile overlay)
   const [showPlaylists, setShowPlaylists] = useState(false);
+
+  // mobile: show/hide destination config sheet
+  const [showDestinationsSheet, setShowDestinationsSheet] = useState(false);
 
   const focusTracks = () => {
     if (tracksContainerRef.current) {
@@ -298,6 +301,12 @@ export default function Home() {
     const main = genres.slice(0, 3).join(" · ");
     if (genres.length > 3) return `${main} +${genres.length - 3}`;
     return main;
+  };
+
+  const getActiveTrack = (): Track | undefined => {
+    const activeId = selectedTrackId || playingTrackId;
+    if (!activeId) return undefined;
+    return tracks.find((t) => t.id === activeId);
   };
 
   const handlePreviewClick = async (track: Track) => {
@@ -471,7 +480,7 @@ export default function Home() {
       });
   };
 
-  // Clicking the title/artist area: select + toggle preview
+  // Clicking the title/artist area (desktop & mobile): select + toggle preview
   const handleTrackNameClick = (track: Track) => {
     setSelectedTrackId(track.id);
     handlePreviewClick(track);
@@ -765,7 +774,7 @@ export default function Home() {
     }
   };
 
-  // KEYBOARD CONTROLS (desktop)
+  // KEYBOARD CONTROLS (desktop mostly – works on mobile with keyboard too)
   useEffect(() => {
     const moveSelection = (direction: 1 | -1, shouldPlay: boolean) => {
       if (!tracks.length) return;
@@ -898,7 +907,7 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [tracks, selectedTrackId, playingTrackId]);
 
-  // Auto-scroll selected row into view when selection changes
+  // Auto-scroll selected row into view when selection changes (desktop only)
   useEffect(() => {
     if (!selectedTrackId) return;
     const row = rowRefs.current[selectedTrackId];
@@ -1039,11 +1048,11 @@ export default function Home() {
   const tracksPanelStyle = isMobile
     ? {
         flex: 1,
-        maxHeight: "calc(100vh - 260px)",
+        maxHeight: "calc(100vh - 220px)",
         overflowY: "auto" as const,
         border: "1px solid #1f2933",
         borderRadius: "0.75rem",
-        padding: "0.7rem 0.9rem",
+        padding: "0.7rem 0.9rem 0.9rem",
         background: "#0b1020",
         outline: "none",
       }
@@ -1058,31 +1067,71 @@ export default function Home() {
         outline: "none",
       };
 
-  const mobilePlaylistOverlayStyle: React.CSSProperties = {
-    position: "fixed",
+  const mobilePlaylistOverlayStyle = {
+    position: "fixed" as const,
     inset: 0,
     zIndex: 40,
     background:
       "linear-gradient(to bottom, rgba(15,23,42,0.98), rgba(5,8,22,0.98))",
     display: isMobile && showPlaylists ? "flex" : "none",
-    flexDirection: "column",
+    flexDirection: "column" as const,
     padding: "1rem",
   };
 
-  const mobilePlaylistHeaderStyle: React.CSSProperties = {
+  const mobilePlaylistHeaderStyle = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: "0.7rem",
   };
 
-  const mobilePlaylistScrollStyle: React.CSSProperties = {
+  const mobilePlaylistScrollStyle = {
     flex: 1,
-    overflowY: "auto",
+    overflowY: "auto" as const,
     borderRadius: "0.75rem",
     border: "1px solid #1f2933",
     padding: "0.75rem",
     background: "#020617",
+  };
+
+  const mobileDestPadStyle = {
+    position: "fixed" as const,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: "0.45rem 1rem 0.7rem",
+    background:
+      "linear-gradient(to top, rgba(5,8,22,0.97), rgba(5,8,22,0.93))",
+    borderTop: "1px solid #1f2933",
+    boxShadow: "0 -10px 25px rgba(0,0,0,0.75)",
+    zIndex: 30,
+  };
+
+  const mobileDestGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: "0.45rem",
+    marginTop: "0.4rem",
+  };
+
+  const mobileDestSheetOverlayStyle = {
+    position: "fixed" as const,
+    inset: 0,
+    zIndex: 45,
+    background: "rgba(15,23,42,0.85)",
+    display: isMobile && showDestinationsSheet ? "flex" : "none",
+    justifyContent: "flex-end",
+  };
+
+  const mobileDestSheetStyle = {
+    width: "100%",
+    maxHeight: "70vh",
+    background: "#020617",
+    borderTopLeftRadius: "1rem",
+    borderTopRightRadius: "1rem",
+    padding: "0.8rem 1rem 0.7rem",
+    boxShadow: "0 -12px 32px rgba(0,0,0,0.75)",
+    borderTop: "1px solid #1f2933",
   };
 
   const renderPlaylistsList = () => (
@@ -1157,6 +1206,174 @@ export default function Home() {
     </ul>
   );
 
+  const renderDestinationsConfig = () => (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.75rem",
+        flexWrap: "wrap",
+      }}
+    >
+      {destinations.map((slot) => {
+        const ownedHasPlaylist =
+          slot.playlistId &&
+          ownedPlaylists.some((pl) => pl.id === slot.playlistId);
+
+        const selectValue =
+          slot.mode === "existing" && slot.playlistId
+            ? slot.playlistId
+            : slot.mode === "new"
+            ? "__new__"
+            : "";
+
+        const color = SLOT_COLORS[slot.id] || "#4b5563";
+        const isSourcePlaylist =
+          !!selectedPlaylistId && slot.playlistId === selectedPlaylistId;
+
+        return (
+          <div
+            key={slot.id}
+            style={{
+              flex: "1 1 180px",
+              minWidth: "180px",
+              border: "1px solid #1f2933",
+              borderRadius: "0.75rem",
+              padding: "0.7rem 0.75rem 0.35rem",
+              background: "#020617",
+              boxShadow: `0 0 0 1px rgba(15,23,42,0.6)`,
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "3px",
+                borderTopLeftRadius: "0.75rem",
+                borderTopRightRadius: "0.75rem",
+                background: color,
+              }}
+            />
+
+            <select
+              value={selectValue}
+              onChange={(e) => {
+                handleDestinationSelectChange(slot.id, e.target.value);
+                focusTracks();
+              }}
+              style={{
+                width: "100%",
+                padding: "0.32rem 0.5rem",
+                borderRadius: "0.5rem",
+                border: isSourcePlaylist
+                  ? "2px solid #ef4444"
+                  : "1px solid #374151",
+                background: "#020617",
+                color: "#e5e7eb",
+                fontSize: "0.8rem",
+                marginBottom: "0.25rem",
+              }}
+            >
+              <option value="">No destination</option>
+              <optgroup label="Owned playlists">
+                {ownedPlaylists.map((pl) => (
+                  <option key={pl.id} value={pl.id}>
+                    {pl.name}
+                  </option>
+                ))}
+              </optgroup>
+
+              {/* If we created a new playlist this session, but it's not in ownedPlaylists yet,
+                  still show it as a selectable option */}
+              {slot.mode === "existing" &&
+                slot.playlistId &&
+                !ownedHasPlaylist && (
+                  <option value={slot.playlistId}>
+                    {slot.displayName || "(new playlist)"}
+                  </option>
+                )}
+
+              <option value="__new__">New playlist…</option>
+            </select>
+
+            {isSourcePlaylist && (
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#f87171",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                This is the source playlist (send is disabled).
+              </div>
+            )}
+
+            {slot.mode === "new" && (
+              <div style={{ marginBottom: "0.35rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.4rem",
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={slot.newName}
+                    onChange={(e) =>
+                      handleDestinationNewNameChange(slot.id, e.target.value)
+                    }
+                    placeholder="e.g. Crate Digger Picks"
+                    style={{
+                      flex: 1,
+                      padding: "0.32rem 0.5rem",
+                      borderRadius: "0.5rem",
+                      border: "1px solid #374151",
+                      background: "#020617",
+                      color: "#e5e7eb",
+                      fontSize: "0.8rem",
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      handleCreatePlaylistForSlot(slot.id);
+                      focusTracks();
+                    }}
+                    style={{
+                      padding: "0.25rem 0.5rem",
+                      borderRadius: "0.5rem",
+                      border: "1px solid #4b5563",
+                      background: "#111827",
+                      color: "#e5e7eb",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                      lineHeight: 1,
+                    }}
+                    title="Create playlist with this name"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div
+              style={{
+                fontSize: "0.75rem",
+                color: "#6b7280",
+                marginTop: "0.15rem",
+              }}
+            >
+              Sent this session: {slot.sentTrackIds.length}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <>
       <style jsx global>{`
@@ -1188,6 +1405,7 @@ export default function Home() {
           fontFamily: "sans-serif",
           background: "#050816",
           color: "#f9fafb",
+          paddingBottom: isMobile ? "4.2rem" : "1.4rem",
         }}
       >
         {/* Top bar: title + logout */}
@@ -1264,6 +1482,70 @@ export default function Home() {
           </div>
         )}
 
+        {/* MOBILE: destination configuration bottom sheet */}
+        {isMobile && (
+          <div style={mobileDestSheetOverlayStyle}>
+            <div style={mobileDestSheetStyle}>
+              <div
+                style={{
+                  width: "42px",
+                  height: "4px",
+                  borderRadius: "999px",
+                  background: "#4b5563",
+                  margin: "0 auto 0.4rem",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "0.4rem",
+                }}
+              >
+                <div>
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontSize: "0.9rem",
+                      color: "#e5e7eb",
+                    }}
+                  >
+                    Destination slots
+                  </h2>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginTop: "0.12rem",
+                      fontSize: "0.75rem",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    Choose playlists for slots 1–6.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowDestinationsSheet(false)}
+                  style={{
+                    padding: "0.25rem 0.7rem",
+                    borderRadius: "999px",
+                    border: "1px solid #4b5563",
+                    background: "#0b1020",
+                    color: "#e5e7eb",
+                    fontSize: "0.8rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Done
+                </button>
+              </div>
+              <div style={{ marginTop: "0.4rem" }}>
+                {renderDestinationsConfig()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main layout */}
         <div style={mainLayoutWrapperStyle}>
           {/* DESKTOP: playlists sidebar */}
@@ -1332,11 +1614,7 @@ export default function Home() {
                     fontWeight: 500,
                   }}
                 >
-                  {showPlaylists
-                    ? isMobile
-                      ? "Hide playlists"
-                      : "Hide playlists"
-                    : "Show playlists"}
+                  {showPlaylists ? "Hide playlists" : "Show playlists"}
                 </button>
 
                 <label
@@ -1384,157 +1662,426 @@ export default function Home() {
               </p>
             )}
 
+            {/* Track list: desktop = table, mobile = cards */}
             {!loadingTracks && selectedPlaylistId && tracks.length > 0 && (
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: "0.85rem",
-                  tableLayout: "fixed",
-                }}
-              >
-                <thead>
-                  <tr>
-                    <th
-                      style={{
-                        textAlign: "left",
-                        padding: "0.35rem",
-                        borderBottom: "1px solid #1f2933",
-                        width: "2.5rem",
-                      }}
-                    >
-                      #
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "left",
-                        padding: "0.35rem",
-                        borderBottom: "1px solid #1f2933",
-                        width: "3rem",
-                      }}
-                    >
-                      ▶
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "left",
-                        padding: "0.35rem",
-                        borderBottom: "1px solid #1f2933",
-                        width: "33%",
-                      }}
-                    >
-                      Title / Artist
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "center",
-                        padding: "0.35rem",
-                        borderBottom: "1px solid #1f2933",
-                        borderLeft: "1px solid #111827",
-                        borderRight: "1px solid #111827",
-                        width: "16%",
-                        maxWidth: "170px",
-                      }}
-                    >
-                      Destinations
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "center",
-                        padding: "0.35rem",
-                        borderBottom: "1px solid #1f2933",
-                        width: "8%",
-                      }}
-                    >
-                      BPM
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "left",
-                        padding: "0.35rem 0.35rem 0.35rem 1.1rem",
-                        borderBottom: "1px solid #1f2933",
-                        borderLeft: "1px solid #111827",
-                        width: "31%",
-                      }}
-                    >
-                      Genres
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "center",
-                        padding: "0.35rem",
-                        borderBottom: "1px solid #1f2933",
-                        width: "7%",
-                      }}
-                    >
-                      Spotify
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tracks.map((t, index) => {
-                    const isPlaying = t.id === playingTrackId;
-                    const isSelectedTrack = t.id === selectedTrackId;
-
-                    const isActiveForSpotify =
-                      t.id === selectedTrackId || t.id === playingTrackId;
-
-                    return (
-                      <tr
-                        key={t.id || `${index}-${t.name}`}
-                        ref={(el) => {
-                          rowRefs.current[t.id] = el;
-                        }}
-                        style={{
-                          backgroundColor: isSelectedTrack
-                            ? "#020617"
-                            : "transparent",
-                        }}
-                      >
-                        <td
+              <>
+                {!isMobile && (
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: "0.85rem",
+                      tableLayout: "fixed",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th
                           style={{
-                            padding: "0.28rem 0.35rem",
+                            textAlign: "left",
+                            padding: "0.35rem",
                             borderBottom: "1px solid #1f2933",
                             width: "2.5rem",
                           }}
                         >
-                          {index + 1}
-                        </td>
-                        {/* Preview button */}
-                        <td
+                          #
+                        </th>
+                        <th
                           style={{
-                            padding: "0.28rem 0.35rem",
+                            textAlign: "left",
+                            padding: "0.35rem",
                             borderBottom: "1px solid #1f2933",
                             width: "3rem",
                           }}
                         >
-                          <button
-                            onClick={() => {
-                              setSelectedTrackId(t.id);
-                              handlePreviewClick(t);
+                          ▶
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: "0.35rem",
+                            borderBottom: "1px solid #1f2933",
+                            width: "33%",
+                          }}
+                        >
+                          Title / Artist
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "center",
+                            padding: "0.35rem",
+                            borderBottom: "1px solid #1f2933",
+                            borderLeft: "1px solid #111827",
+                            borderRight: "1px solid #111827",
+                            width: "16%",
+                            maxWidth: "170px",
+                          }}
+                        >
+                          Destinations
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "center",
+                            padding: "0.35rem",
+                            borderBottom: "1px solid #1f2933",
+                            width: "8%",
+                          }}
+                        >
+                          BPM
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: "0.35rem 0.35rem 0.35rem 1.1rem",
+                            borderBottom: "1px solid #1f2933",
+                            borderLeft: "1px solid #111827",
+                            width: "31%",
+                          }}
+                        >
+                          Genres
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "center",
+                            padding: "0.35rem",
+                            borderBottom: "1px solid #1f2933",
+                            width: "7%",
+                          }}
+                        >
+                          Spotify
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tracks.map((t, index) => {
+                        const isPlaying = t.id === playingTrackId;
+                        const isSelectedTrack = t.id === selectedTrackId;
+
+                        const isActiveForSpotify =
+                          t.id === selectedTrackId || t.id === playingTrackId;
+
+                        return (
+                          <tr
+                            key={t.id || `${index}-${t.name}`}
+                            ref={(el) => {
+                              rowRefs.current[t.id] = el;
                             }}
                             style={{
-                              padding: "0.12rem 0.35rem",
-                              fontSize: "0.7rem",
-                              borderRadius: "999px",
-                              border: "1px solid #4b5563",
-                              background: isPlaying ? "#4b5563" : "transparent",
-                              color: "#f9fafb",
-                              cursor: "pointer",
+                              backgroundColor: isSelectedTrack
+                                ? "#020617"
+                                : "transparent",
                             }}
                           >
-                            {isPlaying ? "⏹" : "▶"}
-                          </button>
-                        </td>
-                        {/* Title + Album Cover + Artist (clickable for preview) */}
-                        <td
-                          onClick={() => handleTrackNameClick(t)}
+                            <td
+                              style={{
+                                padding: "0.28rem 0.35rem",
+                                borderBottom: "1px solid #1f2933",
+                                width: "2.5rem",
+                              }}
+                            >
+                              {index + 1}
+                            </td>
+                            {/* Preview button */}
+                            <td
+                              style={{
+                                padding: "0.28rem 0.35rem",
+                                borderBottom: "1px solid #1f2933",
+                                width: "3rem",
+                              }}
+                            >
+                              <button
+                                onClick={() => {
+                                  setSelectedTrackId(t.id);
+                                  handlePreviewClick(t);
+                                }}
+                                style={{
+                                  padding: "0.12rem 0.35rem",
+                                  fontSize: "0.7rem",
+                                  borderRadius: "999px",
+                                  border: "1px solid #4b5563",
+                                  background: isPlaying
+                                    ? "#4b5563"
+                                    : "transparent",
+                                  color: "#f9fafb",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {isPlaying ? "⏹" : "▶"}
+                              </button>
+                            </td>
+                            {/* Title + Album Cover + Artist (clickable for preview) */}
+                            <td
+                              onClick={() => handleTrackNameClick(t)}
+                              style={{
+                                padding: "0.28rem 0.35rem",
+                                borderBottom: "1px solid #1f2933",
+                                cursor: "pointer",
+                                width: "33%",
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.55rem",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {t.albumImageUrl && (
+                                  <img
+                                    src={t.albumImageUrl}
+                                    alt={t.name}
+                                    style={{
+                                      width: "34px",
+                                      height: "34px",
+                                      objectFit: "cover",
+                                      borderRadius: "0.35rem",
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                )}
+                                <div
+                                  style={{
+                                    overflow: "hidden",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontWeight: 500,
+                                      fontSize: "0.9rem",
+                                      marginBottom: "0.03rem",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                    }}
+                                  >
+                                    {t.name}
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: "0.8rem",
+                                      color: "#9ca3af",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                    }}
+                                  >
+                                    {t.artists.map((a) => a.name).join(", ")}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            {/* Destination buttons (3x2 grid) */}
+                            <td
+                              style={{
+                                padding: "0.28rem 0.35rem",
+                                borderBottom: "1px solid #1f2933",
+                                borderLeft: "1px solid #111827",
+                                borderRight: "1px solid #111827",
+                                textAlign: "center",
+                                minHeight: "40px",
+                                width: "16%",
+                              }}
+                            >
+                              {isSelectedTrack && (
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                      "repeat(3, minmax(0, 1fr))",
+                                    gap: "0.25rem",
+                                    justifyItems: "stretch",
+                                  }}
+                                >
+                                  {destinations.map((slot) => {
+                                    const hasName =
+                                      slot.mode === "existing"
+                                        ? !!slot.playlistId
+                                        : slot.mode === "new"
+                                        ? !!slot.displayName.trim()
+                                        : false;
+                                    const enabled =
+                                      slot.mode === "existing" &&
+                                      !!slot.playlistId;
+                                    const baseColor =
+                                      SLOT_COLORS[slot.id] || "#4b5563";
+
+                                    const isRecentlySent =
+                                      recentSend &&
+                                      recentSend.slotId === slot.id &&
+                                      recentSend.trackId === t.id;
+
+                                    const background = enabled
+                                      ? isRecentlySent
+                                        ? "#f9fafb"
+                                        : baseColor
+                                      : "#111827";
+                                    const color = enabled
+                                      ? "#020617"
+                                      : hasName
+                                      ? "#9ca3af"
+                                      : "#4b5563";
+                                    const borderColor = enabled
+                                      ? baseColor
+                                      : "#4b5563";
+
+                                    return (
+                                      <button
+                                        key={slot.id}
+                                        onClick={() =>
+                                          enabled &&
+                                          handleSendToDestination(slot.id, t)
+                                        }
+                                        disabled={!enabled}
+                                        style={{
+                                          padding: "0.18rem 0.2rem",
+                                          fontSize: "0.7rem",
+                                          borderRadius: "0.35rem",
+                                          border: `1px solid ${borderColor}`,
+                                          background,
+                                          color,
+                                          cursor: enabled
+                                            ? "pointer"
+                                            : "default",
+                                          fontWeight: 600,
+                                          width: "100%",
+                                          transition:
+                                            "background 0.15s ease, transform 0.1s ease",
+                                          transform: isRecentlySent
+                                            ? "scale(1.03)"
+                                            : "scale(1)",
+                                        }}
+                                        title={
+                                          enabled
+                                            ? `Send to slot ${slot.id} (${
+                                                slot.displayName ||
+                                                slot.playlistId ||
+                                                "unnamed"
+                                              })`
+                                            : hasName
+                                            ? `Create/select playlist for slot ${slot.id} first`
+                                            : `Configure slot ${slot.id} in the Destinations section below`
+                                        }
+                                      >
+                                        {slot.id}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </td>
+                            {/* BPM */}
+                            <td
+                              style={{
+                                padding: "0.28rem 0.35rem",
+                                borderBottom: "1px solid #1f2933",
+                                textAlign: "center",
+                                width: "8%",
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              {t.bpmStatus === "loading" && (
+                                <span style={{ opacity: 0.8 }}>…</span>
+                              )}
+                              {t.bpmStatus !== "loading" &&
+                                t.bpm != null &&
+                                Number.isFinite(t.bpm) && (
+                                  <span>{Math.round(t.bpm)}</span>
+                                )}
+                              {t.bpmStatus !== "loading" &&
+                                (t.bpm == null || !Number.isFinite(t.bpm)) && (
+                                  <span style={{ color: "#4b5563" }}>–</span>
+                                )}
+                            </td>
+                            {/* Genres */}
+                            <td
+                              style={{
+                                padding: "0.28rem 0.35rem 0.28rem 1.1rem",
+                                borderBottom: "1px solid #1f2933",
+                                borderLeft: "1px solid #111827",
+                                fontSize: "0.8rem",
+                                color: "#9ca3af",
+                                width: "31%",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {formatGenres(t.genres)}
+                            </td>
+                            {/* Spotify open button */}
+                            <td
+                              style={{
+                                padding: "0.28rem 0.35rem",
+                                borderBottom: "1px solid #1f2933",
+                                textAlign: "center",
+                                width: "7%",
+                              }}
+                            >
+                              {isActiveForSpotify && t.id && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(
+                                      `https://open.spotify.com/track/${t.id}`,
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                    );
+                                  }}
+                                  style={{
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "999px",
+                                    border: "1px solid #22c55e",
+                                    background: "#022c22",
+                                    color: "#bbf7d0",
+                                    fontSize: "0.7rem",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  title="Open in Spotify"
+                                >
+                                  Spotify
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* MOBILE: card layout, no track numbers or destination column */}
+                {isMobile && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.45rem",
+                      paddingBottom: "0.6rem",
+                    }}
+                  >
+                    {tracks.map((t, index) => {
+                      const isPlaying = t.id === playingTrackId;
+                      const isSelectedTrack = t.id === selectedTrackId;
+                      const isActiveForSpotify =
+                        t.id === selectedTrackId || t.id === playingTrackId;
+
+                      return (
+                        <div
+                          key={t.id || `${index}-${t.name}`}
+                          onClick={() => setSelectedTrackId(t.id)}
                           style={{
-                            padding: "0.28rem 0.35rem",
-                            borderBottom: "1px solid #1f2933",
-                            cursor: "pointer",
-                            width: "33%",
-                            overflow: "hidden",
+                            borderRadius: "0.75rem",
+                            border: isSelectedTrack
+                              ? "1px solid #4b5563"
+                              : "1px solid #111827",
+                            background: "#020617",
+                            padding: "0.4rem 0.5rem 0.35rem",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.3rem",
                           }}
                         >
                           <div
@@ -1542,35 +2089,71 @@ export default function Home() {
                               display: "flex",
                               alignItems: "center",
                               gap: "0.55rem",
-                              overflow: "hidden",
                             }}
                           >
-                            {t.albumImageUrl && (
-                              <img
-                                src={t.albumImageUrl}
-                                alt={t.name}
-                                style={{
-                                  width: "34px",
-                                  height: "34px",
-                                  objectFit: "cover",
-                                  borderRadius: "0.35rem",
-                                  flexShrink: 0,
-                                }}
-                              />
-                            )}
                             <div
                               style={{
+                                position: "relative",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {t.albumImageUrl && (
+                                <img
+                                  src={t.albumImageUrl}
+                                  alt={t.name}
+                                  style={{
+                                    width: "54px",
+                                    height: "54px",
+                                    borderRadius: "0.5rem",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTrackId(t.id);
+                                  handlePreviewClick(t);
+                                }}
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  margin: "auto",
+                                  width: "26px",
+                                  height: "26px",
+                                  borderRadius: "999px",
+                                  border: "1px solid rgba(15,23,42,0.9)",
+                                  background: isPlaying
+                                    ? "rgba(15,23,42,0.88)"
+                                    : "rgba(15,23,42,0.78)",
+                                  color: "#f9fafb",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.75rem",
+                                  cursor: "pointer",
+                                  boxShadow:
+                                    "0 0 0 1px rgba(15,23,42,0.8), 0 4px 12px rgba(0,0,0,0.8)",
+                                }}
+                              >
+                                {isPlaying ? "⏹" : "▶"}
+                              </button>
+                            </div>
+                            <div
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
                                 overflow: "hidden",
-                                whiteSpace: "nowrap",
                               }}
                             >
                               <div
                                 style={{
                                   fontWeight: 500,
                                   fontSize: "0.9rem",
-                                  marginBottom: "0.03rem",
+                                  whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
+                                  marginBottom: "0.03rem",
                                 }}
                               >
                                 {t.name}
@@ -1579,373 +2162,265 @@ export default function Home() {
                                 style={{
                                   fontSize: "0.8rem",
                                   color: "#9ca3af",
+                                  whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                 }}
                               >
                                 {t.artists.map((a) => a.name).join(", ")}
                               </div>
+                              <div
+                                style={{
+                                  marginTop: "0.2rem",
+                                  fontSize: "0.7rem",
+                                  color: "#6b7280",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {t.bpmStatus === "loading"
+                                  ? "Detecting BPM… · "
+                                  : t.bpm != null &&
+                                    Number.isFinite(t.bpm) &&
+                                    `${Math.round(t.bpm)} BPM · `}
+                                {formatGenres(t.genres)}
+                              </div>
                             </div>
                           </div>
-                        </td>
-                        {/* Destination buttons (3x2 grid) */}
-                        <td
-                          style={{
-                            padding: "0.28rem 0.35rem",
-                            borderBottom: "1px solid #1f2933",
-                            borderLeft: "1px solid #111827",
-                            borderRight: "1px solid #111827",
-                            textAlign: "center",
-                            minHeight: "40px",
-                            width: "16%",
-                          }}
-                        >
-                          {isSelectedTrack && (
-                            <div
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginTop: "0.05rem",
+                            }}
+                          >
+                            <span
                               style={{
-                                display: "grid",
-                                gridTemplateColumns:
-                                  "repeat(3, minmax(0, 1fr))",
-                                gap: "0.25rem",
-                                justifyItems: "stretch",
-                              }}
-                            >
-                              {destinations.map((slot) => {
-                                const hasName =
-                                  slot.mode === "existing"
-                                    ? !!slot.playlistId
-                                    : slot.mode === "new"
-                                    ? !!slot.displayName.trim()
-                                    : false;
-                                const enabled =
-                                  slot.mode === "existing" && !!slot.playlistId;
-                                const baseColor =
-                                  SLOT_COLORS[slot.id] || "#4b5563";
-
-                                const isRecentlySent =
-                                  recentSend &&
-                                  recentSend.slotId === slot.id &&
-                                  recentSend.trackId === t.id;
-
-                                const background = enabled
-                                  ? isRecentlySent
-                                    ? "#f9fafb"
-                                    : baseColor
-                                  : "#111827";
-                                const color = enabled
-                                  ? "#020617"
-                                  : hasName
-                                  ? "#9ca3af"
-                                  : "#4b5563";
-                                const borderColor = enabled
-                                  ? baseColor
-                                  : "#4b5563";
-
-                                return (
-                                  <button
-                                    key={slot.id}
-                                    onClick={() =>
-                                      enabled &&
-                                      handleSendToDestination(slot.id, t)
-                                    }
-                                    disabled={!enabled}
-                                    style={{
-                                      padding: "0.18rem 0.2rem",
-                                      fontSize: "0.7rem",
-                                      borderRadius: "0.35rem",
-                                      border: `1px solid ${borderColor}`,
-                                      background,
-                                      color,
-                                      cursor: enabled ? "pointer" : "default",
-                                      fontWeight: 600,
-                                      width: "100%",
-                                      transition:
-                                        "background 0.15s ease, transform 0.1s ease",
-                                      transform: isRecentlySent
-                                        ? "scale(1.03)"
-                                        : "scale(1)",
-                                    }}
-                                    title={
-                                      enabled
-                                        ? `Send to slot ${slot.id} (${
-                                            slot.displayName ||
-                                            slot.playlistId ||
-                                            "unnamed"
-                                          })`
-                                        : hasName
-                                        ? `Create/select playlist for slot ${slot.id} first`
-                                        : `Configure slot ${slot.id} in the Destinations section below`
-                                    }
-                                  >
-                                    {slot.id}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </td>
-                        {/* BPM */}
-                        <td
-                          style={{
-                            padding: "0.28rem 0.35rem",
-                            borderBottom: "1px solid #1f2933",
-                            textAlign: "center",
-                            width: "8%",
-                            fontSize: "0.8rem",
-                          }}
-                        >
-                          {t.bpmStatus === "loading" && (
-                            <span style={{ opacity: 0.8 }}>…</span>
-                          )}
-                          {t.bpmStatus !== "loading" &&
-                            t.bpm != null &&
-                            Number.isFinite(t.bpm) && (
-                              <span>{Math.round(t.bpm)}</span>
-                            )}
-                          {t.bpmStatus !== "loading" &&
-                            (t.bpm == null || !Number.isFinite(t.bpm)) && (
-                              <span style={{ color: "#4b5563" }}>–</span>
-                            )}
-                        </td>
-                        {/* Genres */}
-                        <td
-                          style={{
-                            padding: "0.28rem 0.35rem 0.28rem 1.1rem",
-                            borderBottom: "1px solid #1f2933",
-                            borderLeft: "1px solid #111827",
-                            fontSize: "0.8rem",
-                            color: "#9ca3af",
-                            width: "31%",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {formatGenres(t.genres)}
-                        </td>
-                        {/* Spotify open button */}
-                        <td
-                          style={{
-                            padding: "0.28rem 0.35rem",
-                            borderBottom: "1px solid #1f2933",
-                            textAlign: "center",
-                            width: "7%",
-                          }}
-                        >
-                          {isActiveForSpotify && t.id && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                  `https://open.spotify.com/track/${t.id}`,
-                                  "_blank",
-                                  "noopener,noreferrer"
-                                );
-                              }}
-                              style={{
-                                padding: "0.2rem 0.6rem",
-                                borderRadius: "999px",
-                                border: "1px solid #22c55e",
-                                background: "#022c22",
-                                color: "#bbf7d0",
                                 fontSize: "0.7rem",
-                                cursor: "pointer",
-                                fontWeight: 600,
-                                whiteSpace: "nowrap",
+                                color: "#6b7280",
                               }}
-                              title="Open in Spotify"
                             >
-                              Spotify
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                              Use slots 1–6 below to move this track.
+                            </span>
+                            {isActiveForSpotify && t.id && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(
+                                    `https://open.spotify.com/track/${t.id}`,
+                                    "_blank",
+                                    "noopener,noreferrer"
+                                  );
+                                }}
+                                style={{
+                                  padding: "0.18rem 0.55rem",
+                                  borderRadius: "999px",
+                                  border: "1px solid #22c55e",
+                                  background: "#022c22",
+                                  color: "#bbf7d0",
+                                  fontSize: "0.7rem",
+                                  cursor: "pointer",
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                }}
+                                title="Open in Spotify"
+                              >
+                                Spotify
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* BOTTOM: Destinations (still same for now, both desktop & mobile) */}
-        <div
-          style={{
-            marginTop: "0.6rem",
-            borderTop: "1px solid #1f2933",
-            paddingTop: "0.35rem",
-          }}
-        >
+        {/* DESKTOP: Destinations panel at bottom */}
+        {!isMobile && (
           <div
             style={{
-              display: "flex",
-              gap: "0.75rem",
-              flexWrap: "wrap",
+              marginTop: "0.6rem",
+              borderTop: "1px solid #1f2933",
+              paddingTop: "0.35rem",
             }}
           >
-            {destinations.map((slot) => {
-              const ownedHasPlaylist =
-                slot.playlistId &&
-                ownedPlaylists.some((pl) => pl.id === slot.playlistId);
+            {renderDestinationsConfig()}
+          </div>
+        )}
 
-              const selectValue =
-                slot.mode === "existing" && slot.playlistId
-                  ? slot.playlistId
-                  : slot.mode === "new"
-                  ? "__new__"
-                  : "";
-
-              const color = SLOT_COLORS[slot.id] || "#4b5563";
-              const isSourcePlaylist =
-                !!selectedPlaylistId &&
-                slot.playlistId === selectedPlaylistId;
-
-              return (
+        {/* MOBILE: destination pad + "sheet" trigger at bottom */}
+        {isMobile && (
+          <>
+            {/* Fixed pad with 6 slots */}
+            <div style={mobileDestPadStyle}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "0.25rem",
+                  gap: "0.5rem",
+                }}
+              >
                 <div
-                  key={slot.id}
                   style={{
-                    flex: "1 1 180px",
-                    minWidth: "180px",
-                    border: "1px solid #1f2933",
-                    borderRadius: "0.75rem",
-                    padding: "0.7rem 0.75rem 0.35rem",
-                    background: "#020617",
-                    boxShadow: `0 0 0 1px rgba(15,23,42,0.6)`,
-                    position: "relative",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.05rem",
                   }}
                 >
-                  <div
+                  <span
                     style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: "3px",
-                      borderTopLeftRadius: "0.75rem",
-                      borderTopRightRadius: "0.75rem",
-                      background: color,
-                    }}
-                  />
-
-                  <select
-                    value={selectValue}
-                    onChange={(e) => {
-                      handleDestinationSelectChange(slot.id, e.target.value);
-                      focusTracks();
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "0.32rem 0.5rem",
-                      borderRadius: "0.5rem",
-                      border: isSourcePlaylist
-                        ? "2px solid #ef4444"
-                        : "1px solid #374151",
-                      background: "#020617",
-                      color: "#e5e7eb",
                       fontSize: "0.8rem",
-                      marginBottom: "0.25rem",
+                      color: "#e5e7eb",
                     }}
                   >
-                    <option value="">No destination</option>
-                    <optgroup label="Owned playlists">
-                      {ownedPlaylists.map((pl) => (
-                        <option key={pl.id} value={pl.id}>
-                          {pl.name}
-                        </option>
-                      ))}
-                    </optgroup>
+                    Destinations
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "#9ca3af",
+                    }}
+                  >
+                    Tap a slot to send the active track.
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowDestinationsSheet(true)}
+                  style={{
+                    padding: "0.28rem 0.7rem",
+                    borderRadius: "999px",
+                    border: "1px solid #4b5563",
+                    background: "#020617",
+                    color: "#e5e7eb",
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Configure
+                </button>
+              </div>
+              <div style={mobileDestGridStyle}>
+                {destinations.map((slot) => {
+                  const activeTrack = getActiveTrack();
+                  const hasName =
+                    slot.mode === "existing"
+                      ? !!slot.playlistId
+                      : slot.mode === "new"
+                      ? !!slot.displayName.trim()
+                      : false;
 
-                    {/* If we created a new playlist this session, but it's not in ownedPlaylists yet,
-                        still show it as a selectable option */}
-                    {slot.mode === "existing" &&
-                      slot.playlistId &&
-                      !ownedHasPlaylist && (
-                        <option value={slot.playlistId}>
-                          {slot.displayName || "(new playlist)"}
-                        </option>
-                      )}
+                  const isSourcePlaylist =
+                    !!selectedPlaylistId &&
+                    slot.playlistId === selectedPlaylistId;
 
-                    <option value="__new__">New playlist…</option>
-                  </select>
+                  const enabled =
+                    slot.mode === "existing" &&
+                    !!slot.playlistId &&
+                    !isSourcePlaylist;
 
-                  {isSourcePlaylist && (
-                    <div
+                  const baseColor = SLOT_COLORS[slot.id] || "#4b5563";
+
+                  const isRecentlySent =
+                    activeTrack &&
+                    recentSend &&
+                    recentSend.slotId === slot.id &&
+                    recentSend.trackId === activeTrack.id;
+
+                  const background = enabled
+                    ? isRecentlySent
+                      ? "#f9fafb"
+                      : baseColor
+                    : "#020617";
+                  const color = enabled
+                    ? "#020617"
+                    : hasName
+                    ? "#9ca3af"
+                    : "#4b5563";
+                  const borderColor = enabled ? baseColor : "#4b5563";
+
+                  const label =
+                    slot.displayName ||
+                    (hasName
+                      ? "(unnamed)"
+                      : "No playlist");
+
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => {
+                        if (!enabled) return;
+                        const track = getActiveTrack();
+                        if (!track) {
+                          console.log("No active track selected to send.");
+                          return;
+                        }
+                        handleSendToDestination(slot.id, track);
+                      }}
                       style={{
-                        fontSize: "0.75rem",
-                        color: "#f87171",
-                        marginBottom: "0.25rem",
+                        padding: "0.3rem 0.35rem 0.32rem",
+                        borderRadius: "0.55rem",
+                        border: `1px solid ${borderColor}`,
+                        background,
+                        color,
+                        cursor: enabled ? "pointer" : "default",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        justifyContent: "center",
+                        transition:
+                          "background 0.15s ease, transform 0.1s ease",
+                        transform: isRecentlySent ? "scale(1.03)" : "scale(1)",
                       }}
                     >
-                      This is the source playlist (send is disabled).
-                    </div>
-                  )}
-
-                  {slot.mode === "new" && (
-                    <div style={{ marginBottom: "0.35rem" }}>
-                      <div
+                      <span
                         style={{
-                          display: "flex",
-                          gap: "0.4rem",
-                          alignItems: "center",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          marginBottom: "0.08rem",
                         }}
                       >
-                        <input
-                          type="text"
-                          value={slot.newName}
-                          onChange={(e) =>
-                            handleDestinationNewNameChange(
-                              slot.id,
-                              e.target.value
-                            )
-                          }
-                          placeholder="e.g. Crate Digger Picks"
+                        Slot {slot.id}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.72rem",
+                          opacity: enabled ? 0.95 : 0.7,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          maxWidth: "100%",
+                        }}
+                      >
+                        {label}
+                      </span>
+                      {isSourcePlaylist && (
+                        <span
                           style={{
-                            flex: 1,
-                            padding: "0.32rem 0.5rem",
-                            borderRadius: "0.5rem",
-                            border: "1px solid #374151",
-                            background: "#020617",
-                            color: "#e5e7eb",
-                            fontSize: "0.8rem",
+                            marginTop: "0.05rem",
+                            fontSize: "0.7rem",
+                            color: "#fca5a5",
                           }}
-                        />
-                        <button
-                          onClick={() => {
-                            handleCreatePlaylistForSlot(slot.id);
-                            focusTracks();
-                          }}
-                          style={{
-                            padding: "0.25rem 0.5rem",
-                            borderRadius: "0.5rem",
-                            border: "1px solid #4b5563",
-                            background: "#111827",
-                            color: "#e5e7eb",
-                            fontSize: "0.9rem",
-                            cursor: "pointer",
-                            lineHeight: 1,
-                          }}
-                          title="Create playlist with this name"
                         >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#6b7280",
-                      marginTop: "0.15rem",
-                    }}
-                  >
-                    Sent this session: {slot.sentTrackIds.length}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                          Source playlist
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </>
   );
