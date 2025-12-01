@@ -374,10 +374,10 @@ export default function Home() {
           prev.map((t) =>
             t.id === track.id
               ? {
-                  ...t,
-                  bpm,
-                  bpmStatus: bpm === null ? "error" : "idle",
-                }
+                ...t,
+                bpm,
+                bpmStatus: bpm === null ? "error" : "idle",
+              }
               : t
           )
         );
@@ -409,8 +409,8 @@ export default function Home() {
       if (previewRequestIdRef.current !== myRequestId) return;
       const d = audio.duration;
       if (Number.isFinite(d) && d > 0) {
-        // 95% into the preview, but not closer than 1s to the end
-        const offset = Math.min(d * 0.95, Math.max(0, d - 1));
+        // 30% into the preview, but not closer than 1s to the end
+        const offset = Math.min(d * 0.3, Math.max(0, d - 1));
         try {
           audio.currentTime = offset;
         } catch (e) {
@@ -418,6 +418,7 @@ export default function Home() {
         }
       }
     };
+
 
     if (!Number.isFinite(audio.duration) || audio.duration === 0) {
       const onLoaded = () => {
@@ -547,12 +548,12 @@ export default function Home() {
         prev.map((s) =>
           s.id === slotId
             ? {
-                ...s,
-                mode: "existing",
-                playlistId: newPlaylist.id,
-                displayName: newPlaylist.name,
-                newName: "",
-              }
+              ...s,
+              mode: "existing",
+              playlistId: newPlaylist.id,
+              displayName: newPlaylist.name,
+              newName: "",
+            }
             : s
         )
       );
@@ -588,8 +589,8 @@ export default function Home() {
 
     console.log(
       `Sending track "${track.name}" to slot ${slotId} (${slot.displayName ||
-        slot.playlistId ||
-        "unnamed"}).`
+      slot.playlistId ||
+      "unnamed"}).`
     );
 
     setRecentSend({ slotId, trackId: track.id });
@@ -855,8 +856,8 @@ export default function Home() {
             if (!saved) return slot;
             const mode: DestinationMode =
               saved.mode === "existing" ||
-              saved.mode === "new" ||
-              saved.mode === "none"
+                saved.mode === "new" ||
+                saved.mode === "none"
                 ? saved.mode
                 : "none";
             return {
@@ -1023,16 +1024,16 @@ export default function Home() {
 
   const mainLayoutWrapperStyle = isMobile
     ? {
-        display: "flex",
-        flexDirection: "column" as const,
-        gap: "0.9rem",
-        marginTop: "0.9rem",
-      }
+      display: "flex",
+      flexDirection: "column" as const,
+      gap: "0.9rem",
+      marginTop: "0.9rem",
+    }
     : {
-        display: "flex",
-        gap: "1.25rem",
-        marginTop: "0.75rem",
-      };
+      display: "flex",
+      gap: "1.25rem",
+      marginTop: "0.75rem",
+    };
 
   const playlistPanelStyle = {
     flex: "0 0 300px",
@@ -1046,23 +1047,23 @@ export default function Home() {
 
   const tracksPanelStyle = isMobile
     ? {
-        flex: 1,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.7rem 0.9rem 0.9rem",
-        background: "#0b1020",
-        outline: "none",
-      }
+      flex: 1,
+      border: "1px solid #1f2933",
+      borderRadius: "0.75rem",
+      padding: "0.7rem 0.9rem 0.9rem",
+      background: "#0b1020",
+      outline: "none",
+    }
     : {
-        flex: 1,
-        maxHeight: "82vh",
-        overflowY: "auto" as const,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.7rem 0.9rem",
-        background: "#0b1020",
-        outline: "none",
-      };
+      flex: 1,
+      maxHeight: "82vh",
+      overflowY: "auto" as const,
+      border: "1px solid #1f2933",
+      borderRadius: "0.75rem",
+      padding: "0.7rem 0.9rem",
+      background: "#0b1020",
+      outline: "none",
+    };
 
   const mobilePlaylistOverlayStyle = {
     position: "fixed" as const,
@@ -1250,8 +1251,8 @@ export default function Home() {
           slot.mode === "existing" && slot.playlistId
             ? slot.playlistId
             : slot.mode === "new"
-            ? "__new__"
-            : "";
+              ? "__new__"
+              : "";
 
         const color = SLOT_COLORS[slot.id] || "#4b5563";
         const isSourcePlaylist =
@@ -1956,8 +1957,8 @@ export default function Home() {
                                       slot.mode === "existing"
                                         ? !!slot.playlistId
                                         : slot.mode === "new"
-                                        ? !!slot.displayName.trim()
-                                        : false;
+                                          ? !!slot.displayName.trim()
+                                          : false;
                                     const enabled =
                                       slot.mode === "existing" &&
                                       !!slot.playlistId;
@@ -1977,8 +1978,8 @@ export default function Home() {
                                     const color = enabled
                                       ? "#020617"
                                       : hasName
-                                      ? "#9ca3af"
-                                      : "#4b5563";
+                                        ? "#9ca3af"
+                                        : "#4b5563";
                                     const borderColor = enabled
                                       ? baseColor
                                       : "#4b5563";
@@ -2011,14 +2012,13 @@ export default function Home() {
                                         }}
                                         title={
                                           enabled
-                                            ? `Send to slot ${slot.id} (${
-                                                slot.displayName ||
-                                                slot.playlistId ||
-                                                "unnamed"
-                                              })`
+                                            ? `Send to slot ${slot.id} (${slot.displayName ||
+                                            slot.playlistId ||
+                                            "unnamed"
+                                            })`
                                             : hasName
-                                            ? `Create/select playlist for slot ${slot.id} first`
-                                            : `Configure slot ${slot.id} in the Destinations section below`
+                                              ? `Create/select playlist for slot ${slot.id} first`
+                                              : `Configure slot ${slot.id} in the Destinations section below`
                                         }
                                       >
                                         {slot.id}
@@ -2300,8 +2300,8 @@ export default function Home() {
                                 {t.bpmStatus === "loading"
                                   ? "Detecting BPM… · "
                                   : t.bpm != null &&
-                                    Number.isFinite(t.bpm) &&
-                                    `${Math.round(t.bpm)} BPM · `}
+                                  Number.isFinite(t.bpm) &&
+                                  `${Math.round(t.bpm)} BPM · `}
                                 {formatGenres(t.genres)}
                               </div>
                             </div>
@@ -2413,8 +2413,8 @@ export default function Home() {
                   slot.mode === "existing"
                     ? !!slot.playlistId
                     : slot.mode === "new"
-                    ? !!slot.displayName.trim()
-                    : false;
+                      ? !!slot.displayName.trim()
+                      : false;
 
                 const isSourcePlaylist =
                   !!selectedPlaylistId &&
@@ -2441,8 +2441,8 @@ export default function Home() {
                 const color = enabled
                   ? "#020617"
                   : hasName
-                  ? "#9ca3af"
-                  : "#4b5563";
+                    ? "#9ca3af"
+                    : "#4b5563";
                 const borderColor = enabled ? baseColor : "#4b5563";
 
                 const label =
