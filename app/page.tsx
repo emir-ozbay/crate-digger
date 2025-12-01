@@ -28,7 +28,7 @@ type Track = {
 type DestinationMode = "none" | "existing" | "new";
 
 type DestinationSlot = {
-  id: number; // 1..6
+  id: number;
   mode: DestinationMode;
   playlistId: string | null;
   displayName: string;
@@ -44,6 +44,8 @@ const SLOT_COLORS: Record<number, string> = {
   5: "#a855f7",
   6: "#ec4899",
 };
+
+const STATE_STORAGE_KEY = "crate_digger_state_v1";
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false);
@@ -113,6 +115,9 @@ export default function Home() {
 
   const [showPlaylists, setShowPlaylists] = useState(true);
   const [showDestinationsSheet, setShowDestinationsSheet] = useState(false);
+
+  const touchStartXRef = useRef<number | null>(null);
+  const hasRestoredStateRef = useRef(false);
 
   const focusTracks = () => {
     if (tracksContainerRef.current) {
@@ -369,10 +374,10 @@ export default function Home() {
           prev.map((t) =>
             t.id === track.id
               ? {
-                ...t,
-                bpm,
-                bpmStatus: bpm === null ? "error" : "idle",
-              }
+                  ...t,
+                  bpm,
+                  bpmStatus: bpm === null ? "error" : "idle",
+                }
               : t
           )
         );
@@ -402,9 +407,18 @@ export default function Home() {
     audioRef.current
       .play()
       .then(() => {
-        if (previewRequestIdRef.current === myRequestId) {
-          setPlayingTrackId(track.id);
+        if (previewRequestIdRef.current !== myRequestId) {
+          return;
         }
+        const audio = audioRef.current;
+        if (audio) {
+          const d = audio.duration;
+          if (Number.isFinite(d) && d > 0) {
+            const offset = Math.min(d * 0.2, Math.max(0, d - 1));
+            audio.currentTime = offset;
+          }
+        }
+        setPlayingTrackId(track.id);
       })
       .catch((err: any) => {
         if (err?.name === "AbortError") return;
@@ -517,12 +531,12 @@ export default function Home() {
         prev.map((s) =>
           s.id === slotId
             ? {
-              ...s,
-              mode: "existing",
-              playlistId: newPlaylist.id,
-              displayName: newPlaylist.name,
-              newName: "",
-            }
+                ...s,
+                mode: "existing",
+                playlistId: newPlaylist.id,
+                displayName: newPlaylist.name,
+                newName: "",
+              }
             : s
         )
       );
@@ -558,8 +572,8 @@ export default function Home() {
 
     console.log(
       `Sending track "${track.name}" to slot ${slotId} (${slot.displayName ||
-      slot.playlistId ||
-      "unnamed"}).`
+        slot.playlistId ||
+        "unnamed"}).`
     );
 
     setRecentSend({ slotId, trackId: track.id });
@@ -797,6 +811,94 @@ export default function Home() {
     }
   }, [selectedTrackId]);
 
+  // Restore last session (once, after playlists loaded)
+  useEffect(() => {
+    if (hasRestoredStateRef.current) return;
+    if (!playlists.length) return;
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(STATE_STORAGE_KEY);
+      if (!raw) {
+        hasRestoredStateRef.current = true;
+        return;
+      }
+
+      const parsed = JSON.parse(raw);
+
+      if (typeof parsed.autoRemoveOnSend === "boolean") {
+        setAutoRemoveOnSend(parsed.autoRemoveOnSend);
+      }
+
+      if (Array.isArray(parsed.destinations)) {
+        setDestinations((prev) =>
+          prev.map((slot) => {
+            const saved = parsed.destinations.find(
+              (s: any) => s && s.id === slot.id
+            );
+            if (!saved) return slot;
+            const mode: DestinationMode =
+              saved.mode === "existing" ||
+              saved.mode === "new" ||
+              saved.mode === "none"
+                ? saved.mode
+                : "none";
+            return {
+              ...slot,
+              mode,
+              playlistId: saved.playlistId ?? null,
+              displayName: saved.displayName || "",
+              newName: saved.newName || "",
+              sentTrackIds: [],
+            };
+          })
+        );
+      }
+
+      if (parsed.selectedPlaylistId && typeof parsed.selectedPlaylistId === "string") {
+        const pl = playlists.find((p) => p.id === parsed.selectedPlaylistId);
+        if (pl) {
+          handleSelectPlaylist(pl);
+        }
+      }
+
+      hasRestoredStateRef.current = true;
+    } catch (err) {
+      console.error("Failed to restore saved state", err);
+      hasRestoredStateRef.current = true;
+    }
+  }, [playlists]);
+
+  // Persist session state
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const simpleDestinations = destinations.map(
+        ({ id, mode, playlistId, displayName, newName }) => ({
+          id,
+          mode,
+          playlistId,
+          displayName,
+          newName,
+        })
+      );
+
+      const stateToSave = {
+        selectedPlaylistId,
+        destinations: simpleDestinations,
+        autoRemoveOnSend,
+      };
+
+      window.localStorage.setItem(
+        STATE_STORAGE_KEY,
+        JSON.stringify(stateToSave)
+      );
+    } catch (err) {
+      console.error("Failed to persist state", err);
+    }
+  }, [selectedPlaylistId, destinations, autoRemoveOnSend]);
+
   if (loading) {
     return (
       <>
@@ -900,16 +1002,16 @@ export default function Home() {
 
   const mainLayoutWrapperStyle = isMobile
     ? {
-      display: "flex",
-      flexDirection: "column" as const,
-      gap: "0.9rem",
-      marginTop: "0.9rem",
-    }
+        display: "flex",
+        flexDirection: "column" as const,
+        gap: "0.9rem",
+        marginTop: "0.9rem",
+      }
     : {
-      display: "flex",
-      gap: "1.25rem",
-      marginTop: "0.75rem",
-    };
+        display: "flex",
+        gap: "1.25rem",
+        marginTop: "0.75rem",
+      };
 
   const playlistPanelStyle = {
     flex: "0 0 300px",
@@ -923,23 +1025,23 @@ export default function Home() {
 
   const tracksPanelStyle = isMobile
     ? {
-      flex: 1,
-      border: "1px solid #1f2933",
-      borderRadius: "0.75rem",
-      padding: "0.7rem 0.9rem 0.9rem",
-      background: "#0b1020",
-      outline: "none",
-    }
+        flex: 1,
+        border: "1px solid #1f2933",
+        borderRadius: "0.75rem",
+        padding: "0.7rem 0.9rem 0.9rem",
+        background: "#0b1020",
+        outline: "none",
+      }
     : {
-      flex: 1,
-      maxHeight: "82vh",
-      overflowY: "auto" as const,
-      border: "1px solid #1f2933",
-      borderRadius: "0.75rem",
-      padding: "0.7rem 0.9rem",
-      background: "#0b1020",
-      outline: "none",
-    };
+        flex: 1,
+        maxHeight: "82vh",
+        overflowY: "auto" as const,
+        border: "1px solid #1f2933",
+        borderRadius: "0.75rem",
+        padding: "0.7rem 0.9rem",
+        background: "#0b1020",
+        outline: "none",
+      };
 
   const mobilePlaylistOverlayStyle = {
     position: "fixed" as const,
@@ -984,11 +1086,10 @@ export default function Home() {
   const mobileDestGridStyle = {
     display: "grid",
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gridAutoRows: "1fr",      // 🔹 make all rows share height
+    gridAutoRows: "1fr" as const,
     gap: "0.45rem",
     marginTop: "0.4rem",
   };
-
 
   const mobileDestSheetOverlayStyle = {
     position: "fixed" as const,
@@ -1128,8 +1229,8 @@ export default function Home() {
           slot.mode === "existing" && slot.playlistId
             ? slot.playlistId
             : slot.mode === "new"
-              ? "__new__"
-              : "";
+            ? "__new__"
+            : "";
 
         const color = SLOT_COLORS[slot.id] || "#4b5563";
         const isSourcePlaylist =
@@ -1834,8 +1935,8 @@ export default function Home() {
                                       slot.mode === "existing"
                                         ? !!slot.playlistId
                                         : slot.mode === "new"
-                                          ? !!slot.displayName.trim()
-                                          : false;
+                                        ? !!slot.displayName.trim()
+                                        : false;
                                     const enabled =
                                       slot.mode === "existing" &&
                                       !!slot.playlistId;
@@ -1855,8 +1956,8 @@ export default function Home() {
                                     const color = enabled
                                       ? "#020617"
                                       : hasName
-                                        ? "#9ca3af"
-                                        : "#4b5563";
+                                      ? "#9ca3af"
+                                      : "#4b5563";
                                     const borderColor = enabled
                                       ? baseColor
                                       : "#4b5563";
@@ -1889,13 +1990,14 @@ export default function Home() {
                                         }}
                                         title={
                                           enabled
-                                            ? `Send to slot ${slot.id} (${slot.displayName ||
-                                            slot.playlistId ||
-                                            "unnamed"
-                                            })`
+                                            ? `Send to slot ${slot.id} (${
+                                                slot.displayName ||
+                                                slot.playlistId ||
+                                                "unnamed"
+                                              })`
                                             : hasName
-                                              ? `Create/select playlist for slot ${slot.id} first`
-                                              : `Configure slot ${slot.id} in the Destinations section below`
+                                            ? `Create/select playlist for slot ${slot.id} first`
+                                            : `Configure slot ${slot.id} in the Destinations section below`
                                         }
                                       >
                                         {slot.id}
@@ -2014,19 +2116,62 @@ export default function Home() {
                           <div
                             style={{
                               display: "grid",
-                              gridTemplateColumns: "auto minmax(0, 1fr) auto",
+                              gridTemplateColumns:
+                                "auto minmax(0, 1fr) auto",
                               columnGap: "0.35rem",
                               alignItems: "center",
                             }}
                           >
-
-                            {/* Left ~1/3 area: preview (clickable) */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedTrackId(t.id);
                                 handlePreviewClick(t);
+                              }}
+                              onTouchStart={(e) => {
+                                if (e.touches && e.touches[0]) {
+                                  touchStartXRef.current =
+                                    e.touches[0].clientX;
+                                }
+                              }}
+                              onTouchEnd={(e) => {
+                                const startX = touchStartXRef.current;
+                                if (startX == null) return;
+                                const endX =
+                                  e.changedTouches[0]?.clientX ?? startX;
+                                const delta = endX - startX;
+                                const threshold = 40;
+
+                                const audio = audioRef.current;
+
+                                if (Math.abs(delta) < threshold) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSelectedTrackId(t.id);
+                                  handlePreviewClick(t);
+                                  return;
+                                }
+
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!audio) return;
+
+                                const step = 5;
+                                if (delta > 0) {
+                                  const duration = audio.duration;
+                                  const target =
+                                    (audio.currentTime || 0) + step;
+                                  audio.currentTime =
+                                    Number.isFinite(duration) && duration > 0
+                                      ? Math.min(target, duration - 0.5)
+                                      : target;
+                                } else {
+                                  audio.currentTime = Math.max(
+                                    (audio.currentTime || 0) - step,
+                                    0
+                                  );
+                                }
                               }}
                               style={{
                                 padding: 0,
@@ -2092,7 +2237,6 @@ export default function Home() {
                               </div>
                             </button>
 
-                            {/* Middle: title / artist / bpm / genres */}
                             <div
                               style={{
                                 minWidth: 0,
@@ -2135,13 +2279,12 @@ export default function Home() {
                                 {t.bpmStatus === "loading"
                                   ? "Detecting BPM… · "
                                   : t.bpm != null &&
-                                  Number.isFinite(t.bpm) &&
-                                  `${Math.round(t.bpm)} BPM · `}
+                                    Number.isFinite(t.bpm) &&
+                                    `${Math.round(t.bpm)} BPM · `}
                                 {formatGenres(t.genres)}
                               </div>
                             </div>
 
-                            {/* Right: Spotify button (top-right of card) */}
                             {isActiveForSpotify && t.id && (
                               <button
                                 onClick={(e) => {
@@ -2249,8 +2392,8 @@ export default function Home() {
                   slot.mode === "existing"
                     ? !!slot.playlistId
                     : slot.mode === "new"
-                      ? !!slot.displayName.trim()
-                      : false;
+                    ? !!slot.displayName.trim()
+                    : false;
 
                 const isSourcePlaylist =
                   !!selectedPlaylistId &&
@@ -2277,8 +2420,8 @@ export default function Home() {
                 const color = enabled
                   ? "#020617"
                   : hasName
-                    ? "#9ca3af"
-                    : "#4b5563";
+                  ? "#9ca3af"
+                  : "#4b5563";
                 const borderColor = enabled ? baseColor : "#4b5563";
 
                 const label =
@@ -2308,11 +2451,10 @@ export default function Home() {
                       flexDirection: "column",
                       alignItems: "flex-start",
                       justifyContent: "center",
-                      height: "100%",                // 🔹 fill grid cell
+                      height: "100%",
                       transition: "background 0.15s ease, transform 0.1s ease",
                       transform: isRecentlySent ? "scale(1.03)" : "scale(1)",
                     }}
-
                   >
                     <span
                       style={{
