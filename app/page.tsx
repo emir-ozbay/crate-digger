@@ -369,10 +369,10 @@ export default function Home() {
           prev.map((t) =>
             t.id === track.id
               ? {
-                  ...t,
-                  bpm,
-                  bpmStatus: bpm === null ? "error" : "idle",
-                }
+                ...t,
+                bpm,
+                bpmStatus: bpm === null ? "error" : "idle",
+              }
               : t
           )
         );
@@ -517,12 +517,12 @@ export default function Home() {
         prev.map((s) =>
           s.id === slotId
             ? {
-                ...s,
-                mode: "existing",
-                playlistId: newPlaylist.id,
-                displayName: newPlaylist.name,
-                newName: "",
-              }
+              ...s,
+              mode: "existing",
+              playlistId: newPlaylist.id,
+              displayName: newPlaylist.name,
+              newName: "",
+            }
             : s
         )
       );
@@ -558,8 +558,8 @@ export default function Home() {
 
     console.log(
       `Sending track "${track.name}" to slot ${slotId} (${slot.displayName ||
-        slot.playlistId ||
-        "unnamed"}).`
+      slot.playlistId ||
+      "unnamed"}).`
     );
 
     setRecentSend({ slotId, trackId: track.id });
@@ -900,16 +900,16 @@ export default function Home() {
 
   const mainLayoutWrapperStyle = isMobile
     ? {
-        display: "flex",
-        flexDirection: "column" as const,
-        gap: "0.9rem",
-        marginTop: "0.9rem",
-      }
+      display: "flex",
+      flexDirection: "column" as const,
+      gap: "0.9rem",
+      marginTop: "0.9rem",
+    }
     : {
-        display: "flex",
-        gap: "1.25rem",
-        marginTop: "0.75rem",
-      };
+      display: "flex",
+      gap: "1.25rem",
+      marginTop: "0.75rem",
+    };
 
   const playlistPanelStyle = {
     flex: "0 0 300px",
@@ -923,23 +923,23 @@ export default function Home() {
 
   const tracksPanelStyle = isMobile
     ? {
-        flex: 1,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.7rem 0.9rem 0.9rem",
-        background: "#0b1020",
-        outline: "none",
-      }
+      flex: 1,
+      border: "1px solid #1f2933",
+      borderRadius: "0.75rem",
+      padding: "0.7rem 0.9rem 0.9rem",
+      background: "#0b1020",
+      outline: "none",
+    }
     : {
-        flex: 1,
-        maxHeight: "82vh",
-        overflowY: "auto" as const,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.7rem 0.9rem",
-        background: "#0b1020",
-        outline: "none",
-      };
+      flex: 1,
+      maxHeight: "82vh",
+      overflowY: "auto" as const,
+      border: "1px solid #1f2933",
+      borderRadius: "0.75rem",
+      padding: "0.7rem 0.9rem",
+      background: "#0b1020",
+      outline: "none",
+    };
 
   const mobilePlaylistOverlayStyle = {
     position: "fixed" as const,
@@ -1126,8 +1126,8 @@ export default function Home() {
           slot.mode === "existing" && slot.playlistId
             ? slot.playlistId
             : slot.mode === "new"
-            ? "__new__"
-            : "";
+              ? "__new__"
+              : "";
 
         const color = SLOT_COLORS[slot.id] || "#4b5563";
         const isSourcePlaylist =
@@ -1832,8 +1832,8 @@ export default function Home() {
                                       slot.mode === "existing"
                                         ? !!slot.playlistId
                                         : slot.mode === "new"
-                                        ? !!slot.displayName.trim()
-                                        : false;
+                                          ? !!slot.displayName.trim()
+                                          : false;
                                     const enabled =
                                       slot.mode === "existing" &&
                                       !!slot.playlistId;
@@ -1853,8 +1853,8 @@ export default function Home() {
                                     const color = enabled
                                       ? "#020617"
                                       : hasName
-                                      ? "#9ca3af"
-                                      : "#4b5563";
+                                        ? "#9ca3af"
+                                        : "#4b5563";
                                     const borderColor = enabled
                                       ? baseColor
                                       : "#4b5563";
@@ -1887,14 +1887,13 @@ export default function Home() {
                                         }}
                                         title={
                                           enabled
-                                            ? `Send to slot ${slot.id} (${
-                                                slot.displayName ||
-                                                slot.playlistId ||
-                                                "unnamed"
-                                              })`
+                                            ? `Send to slot ${slot.id} (${slot.displayName ||
+                                            slot.playlistId ||
+                                            "unnamed"
+                                            })`
                                             : hasName
-                                            ? `Create/select playlist for slot ${slot.id} first`
-                                            : `Configure slot ${slot.id} in the Destinations section below`
+                                              ? `Create/select playlist for slot ${slot.id} first`
+                                              : `Configure slot ${slot.id} in the Destinations section below`
                                         }
                                       >
                                         {slot.id}
@@ -2013,12 +2012,12 @@ export default function Home() {
                           <div
                             style={{
                               display: "grid",
-                              gridTemplateColumns:
-                                "minmax(0, 1.1fr) minmax(0, 2fr) auto",
-                              columnGap: "0.6rem",
+                              gridTemplateColumns: "auto minmax(0, 1fr) auto",
+                              columnGap: "0.35rem",
                               alignItems: "center",
                             }}
                           >
+
                             {/* Left ~1/3 area: preview (clickable) */}
                             <button
                               type="button"
@@ -2134,8 +2133,8 @@ export default function Home() {
                                 {t.bpmStatus === "loading"
                                   ? "Detecting BPM… · "
                                   : t.bpm != null &&
-                                    Number.isFinite(t.bpm) &&
-                                    `${Math.round(t.bpm)} BPM · `}
+                                  Number.isFinite(t.bpm) &&
+                                  `${Math.round(t.bpm)} BPM · `}
                                 {formatGenres(t.genres)}
                               </div>
                             </div>
@@ -2248,8 +2247,8 @@ export default function Home() {
                   slot.mode === "existing"
                     ? !!slot.playlistId
                     : slot.mode === "new"
-                    ? !!slot.displayName.trim()
-                    : false;
+                      ? !!slot.displayName.trim()
+                      : false;
 
                 const isSourcePlaylist =
                   !!selectedPlaylistId &&
@@ -2276,8 +2275,8 @@ export default function Home() {
                 const color = enabled
                   ? "#020617"
                   : hasName
-                  ? "#9ca3af"
-                  : "#4b5563";
+                    ? "#9ca3af"
+                    : "#4b5563";
                 const borderColor = enabled ? baseColor : "#4b5563";
 
                 const label =
