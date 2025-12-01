@@ -121,7 +121,7 @@ export default function Home() {
   // recent send for visual flash: {slotId, trackId}
   const [recentSend, setRecentSend] = useState<{
     slotId: number;
-  trackId: string;
+    trackId: string;
   } | null>(null);
 
   // Auto-remove from source playlist after successful send (or duplicate)
@@ -133,8 +133,8 @@ export default function Home() {
   // ref for tracks container to restore focus
   const tracksContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // show/hide playlist sidebar (desktop) or playlist block (mobile)
-  const [showPlaylists, setShowPlaylists] = useState(true);
+  // show/hide playlist UI (desktop sidebar or mobile overlay)
+  const [showPlaylists, setShowPlaylists] = useState(false);
 
   const focusTracks = () => {
     if (tracksContainerRef.current) {
@@ -234,6 +234,11 @@ export default function Home() {
     setPlayingTrackId(null);
     setSelectedTrackId(null);
     followPlaybackRef.current = false;
+
+    // On mobile, hide the shelf after choosing
+    if (isMobile) {
+      setShowPlaylists(false);
+    }
 
     // stop any playing audio when switching playlists
     if (audioRef.current) {
@@ -611,7 +616,7 @@ export default function Home() {
       return;
     }
 
-    // 🔴 New: If source and destination playlist are the same, skip send & removal
+    // If source and destination playlist are the same, skip send & removal
     if (selectedPlaylistId && slot.playlistId === selectedPlaylistId) {
       console.log(
         `Slot ${slotId}: source and destination playlist are the same. Skipping send.`
@@ -633,7 +638,7 @@ export default function Home() {
       }).`
     );
 
-    // 🔔 Optimistic flash: fire immediately on click
+    // Optimistic flash: fire immediately on click
     setRecentSend({ slotId, trackId: track.id });
     setTimeout(() => {
       setRecentSend((prev) =>
@@ -672,7 +677,7 @@ export default function Home() {
         );
       }
 
-      // 🔁 Auto-remove behavior (even if duplicate in destination)
+      // Auto-remove behavior (even if duplicate in destination)
       if (autoRemoveOnSend) {
         const isSourceOwned =
           !!selectedPlaylistId &&
@@ -760,7 +765,7 @@ export default function Home() {
     }
   };
 
-  // KEYBOARD CONTROLS
+  // KEYBOARD CONTROLS (desktop)
   useEffect(() => {
     const moveSelection = (direction: 1 | -1, shouldPlay: boolean) => {
       if (!tracks.length) return;
@@ -1021,26 +1026,15 @@ export default function Home() {
         marginTop: "0.75rem",
       };
 
-  const playlistPanelStyle = isMobile
-    ? {
-        flex: "0 0 auto",
-        maxHeight: "40vh",
-        width: "100%",
-        overflowY: "auto" as const,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.75rem",
-        background: "#0b1020",
-      }
-    : {
-        flex: "0 0 260px",
-        maxHeight: "82vh",
-        overflowY: "auto" as const,
-        border: "1px solid #1f2933",
-        borderRadius: "0.75rem",
-        padding: "0.75rem",
-        background: "#0b1020",
-      };
+  const playlistPanelStyle = {
+    flex: "0 0 260px",
+    maxHeight: "82vh",
+    overflowY: "auto" as const,
+    border: "1px solid #1f2933",
+    borderRadius: "0.75rem",
+    padding: "0.75rem",
+    background: "#0b1020",
+  };
 
   const tracksPanelStyle = isMobile
     ? {
@@ -1063,6 +1057,105 @@ export default function Home() {
         background: "#0b1020",
         outline: "none",
       };
+
+  const mobilePlaylistOverlayStyle: React.CSSProperties = {
+    position: "fixed",
+    inset: 0,
+    zIndex: 40,
+    background:
+      "linear-gradient(to bottom, rgba(15,23,42,0.98), rgba(5,8,22,0.98))",
+    display: isMobile && showPlaylists ? "flex" : "none",
+    flexDirection: "column",
+    padding: "1rem",
+  };
+
+  const mobilePlaylistHeaderStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "0.7rem",
+  };
+
+  const mobilePlaylistScrollStyle: React.CSSProperties = {
+    flex: 1,
+    overflowY: "auto",
+    borderRadius: "0.75rem",
+    border: "1px solid #1f2933",
+    padding: "0.75rem",
+    background: "#020617",
+  };
+
+  const renderPlaylistsList = () => (
+    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      {playlists.map((pl) => {
+        const isSelected = pl.id === selectedPlaylistId;
+        return (
+          <li
+            key={pl.id}
+            onClick={() => {
+              handleSelectPlaylist(pl);
+              focusTracks();
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginBottom: "0.45rem",
+              padding: "0.35rem 0.45rem",
+              borderRadius: "0.5rem",
+              cursor: "pointer",
+              background: isSelected ? "#111827" : "transparent",
+              border: isSelected
+                ? "1px solid #4b5563"
+                : "1px solid transparent",
+            }}
+          >
+            {pl.images && pl.images[0] && (
+              <img
+                src={pl.images[0].url}
+                alt={pl.name}
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  objectFit: "cover",
+                  borderRadius: "0.35rem",
+                  marginRight: "0.55rem",
+                }}
+              />
+            )}
+            <div>
+              <div
+                style={{
+                  fontSize: "0.9rem",
+                  fontWeight: 500,
+                  lineHeight: 1.2,
+                }}
+              >
+                {pl.name}
+              </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#9ca3af",
+                }}
+              >
+                {pl.tracks?.total ?? 0} tracks
+              </div>
+              {pl.ownerName && (
+                <div
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#6b7280",
+                  }}
+                >
+                  by {pl.ownerName}
+                </div>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
     <>
@@ -1127,10 +1220,54 @@ export default function Home() {
           </button>
         </div>
 
+        {/* MOBILE: playlist overlay shelf */}
+        {isMobile && (
+          <div style={mobilePlaylistOverlayStyle}>
+            <div style={mobilePlaylistHeaderStyle}>
+              <div>
+                <h2
+                  style={{
+                    fontSize: "1rem",
+                    margin: 0,
+                    color: "#e5e7eb",
+                  }}
+                >
+                  Your Playlists
+                </h2>
+                <p
+                  style={{
+                    margin: 0,
+                    marginTop: "0.15rem",
+                    fontSize: "0.75rem",
+                    color: "#9ca3af",
+                  }}
+                >
+                  Tap a playlist to load it.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPlaylists(false)}
+                style={{
+                  padding: "0.3rem 0.8rem",
+                  borderRadius: "999px",
+                  border: "1px solid #4b5563",
+                  background: "#020617",
+                  color: "#e5e7eb",
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={mobilePlaylistScrollStyle}>{renderPlaylistsList()}</div>
+          </div>
+        )}
+
         {/* Main layout */}
         <div style={mainLayoutWrapperStyle}>
-          {/* Playlists */}
-          {showPlaylists && (
+          {/* DESKTOP: playlists sidebar */}
+          {!isMobile && showPlaylists && (
             <div style={playlistPanelStyle}>
               <h2
                 style={{
@@ -1141,75 +1278,7 @@ export default function Home() {
               >
                 Your Playlists
               </h2>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                {playlists.map((pl) => {
-                  const isSelected = pl.id === selectedPlaylistId;
-                  return (
-                    <li
-                      key={pl.id}
-                      onClick={() => {
-                        handleSelectPlaylist(pl);
-                        focusTracks();
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        marginBottom: "0.45rem",
-                        padding: "0.35rem 0.45rem",
-                        borderRadius: "0.5rem",
-                        cursor: "pointer",
-                        background: isSelected ? "#111827" : "transparent",
-                        border: isSelected
-                          ? "1px solid #4b5563"
-                          : "1px solid transparent",
-                      }}
-                    >
-                      {pl.images && pl.images[0] && (
-                        <img
-                          src={pl.images[0].url}
-                          alt={pl.name}
-                          style={{
-                            width: "34px",
-                            height: "34px",
-                            objectFit: "cover",
-                            borderRadius: "0.35rem",
-                            marginRight: "0.55rem",
-                          }}
-                        />
-                      )}
-                      <div>
-                        <div
-                          style={{
-                            fontSize: "0.9rem",
-                            fontWeight: 500,
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {pl.name}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "0.75rem",
-                            color: "#9ca3af",
-                          }}
-                        >
-                          {pl.tracks?.total ?? 0} tracks
-                        </div>
-                        {pl.ownerName && (
-                          <div
-                            style={{
-                              fontSize: "0.7rem",
-                              color: "#6b7280",
-                            }}
-                          >
-                            by {pl.ownerName}
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              {renderPlaylistsList()}
             </div>
           )}
 
@@ -1263,7 +1332,11 @@ export default function Home() {
                     fontWeight: 500,
                   }}
                 >
-                  {showPlaylists ? "Hide playlists" : "Show playlists"}
+                  {showPlaylists
+                    ? isMobile
+                      ? "Hide playlists"
+                      : "Hide playlists"
+                    : "Show playlists"}
                 </button>
 
                 <label
@@ -1306,7 +1379,8 @@ export default function Home() {
 
             {!selectedPlaylistId && (
               <p style={{ color: "#9ca3af", fontSize: "0.85rem" }}>
-                Choose a playlist from the {isMobile ? "list above" : "left"}.
+                Choose a playlist from{" "}
+                {isMobile ? "the playlist button" : "the sidebar"}.
               </p>
             )}
 
@@ -1694,7 +1768,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* BOTTOM: Destinations */}
+        {/* BOTTOM: Destinations (still same for now, both desktop & mobile) */}
         <div
           style={{
             marginTop: "0.6rem",
