@@ -411,7 +411,7 @@ export default function Home() {
       if (previewRequestIdRef.current !== myRequestId) return;
       const d = audio.duration;
       if (Number.isFinite(d) && d > 0) {
-        const offset = Math.min(d * 0.3, Math.max(0, d - 1)); // 30%
+        const offset = Math.min(d * 0.95, Math.max(0, d - 1)); // 30%
         try {
           audio.currentTime = offset;
         } catch {
