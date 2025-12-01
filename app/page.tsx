@@ -134,7 +134,7 @@ export default function Home() {
   const tracksContainerRef = useRef<HTMLDivElement | null>(null);
 
   // show/hide playlist UI (desktop sidebar or mobile overlay)
-  const [showPlaylists, setShowPlaylists] = useState(false);
+  const [showPlaylists, setShowPlaylists] = useState(true); // desktop: visible by default
 
   // mobile: show/hide destination config sheet
   const [showDestinationsSheet, setShowDestinationsSheet] = useState(false);
@@ -1109,7 +1109,7 @@ export default function Home() {
 
   const mobileDestGridStyle = {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))", // 3 columns, 2 rows
     gap: "0.45rem",
     marginTop: "0.4rem",
   };
@@ -1234,11 +1234,11 @@ export default function Home() {
           <div
             key={slot.id}
             style={{
-              flex: "1 1 180px",
-              minWidth: "180px",
+              flex: "1 1 200px",
+              minWidth: "200px",
               border: "1px solid #1f2933",
-              borderRadius: "0.75rem",
-              padding: "0.7rem 0.75rem 0.35rem",
+              borderRadius: "0.85rem",
+              padding: "1rem 0.9rem 0.6rem",
               background: "#020617",
               boxShadow: `0 0 0 1px rgba(15,23,42,0.6)`,
               position: "relative",
@@ -1251,8 +1251,8 @@ export default function Home() {
                 left: 0,
                 right: 0,
                 height: "3px",
-                borderTopLeftRadius: "0.75rem",
-                borderTopRightRadius: "0.75rem",
+                borderTopLeftRadius: "0.85rem",
+                borderTopRightRadius: "0.85rem",
                 background: color,
               }}
             />
@@ -1265,15 +1265,15 @@ export default function Home() {
               }}
               style={{
                 width: "100%",
-                padding: "0.32rem 0.5rem",
-                borderRadius: "0.5rem",
+                padding: "0.4rem 0.6rem",
+                borderRadius: "0.6rem",
                 border: isSourcePlaylist
                   ? "2px solid #ef4444"
                   : "1px solid #374151",
                 background: "#020617",
                 color: "#e5e7eb",
                 fontSize: "0.8rem",
-                marginBottom: "0.25rem",
+                marginBottom: "0.35rem",
               }}
             >
               <option value="">No destination</option>
@@ -1311,7 +1311,7 @@ export default function Home() {
             )}
 
             {slot.mode === "new" && (
-              <div style={{ marginBottom: "0.35rem" }}>
+              <div style={{ marginBottom: "0.4rem" }}>
                 <div
                   style={{
                     display: "flex",
@@ -1328,8 +1328,8 @@ export default function Home() {
                     placeholder="e.g. Crate Digger Picks"
                     style={{
                       flex: 1,
-                      padding: "0.32rem 0.5rem",
-                      borderRadius: "0.5rem",
+                      padding: "0.38rem 0.6rem",
+                      borderRadius: "0.6rem",
                       border: "1px solid #374151",
                       background: "#020617",
                       color: "#e5e7eb",
@@ -1342,8 +1342,8 @@ export default function Home() {
                       focusTracks();
                     }}
                     style={{
-                      padding: "0.25rem 0.5rem",
-                      borderRadius: "0.5rem",
+                      padding: "0.3rem 0.55rem",
+                      borderRadius: "0.6rem",
                       border: "1px solid #4b5563",
                       background: "#111827",
                       color: "#e5e7eb",
@@ -1363,7 +1363,7 @@ export default function Home() {
               style={{
                 fontSize: "0.75rem",
                 color: "#6b7280",
-                marginTop: "0.15rem",
+                marginTop: "0.2rem",
               }}
             >
               Sent this session: {slot.sentTrackIds.length}
@@ -1581,26 +1581,26 @@ export default function Home() {
                 flexWrap: "wrap",
               }}
             >
-              <h2
-                style={{
-                  fontSize: "0.95rem",
-                  margin: 0,
-                  color: "#9ca3af",
-                }}
-              >
-                {selectedPlaylistName
-                  ? `Tracks in "${selectedPlaylistName}"`
-                  : "No playlist selected"}
-              </h2>
-
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
-                  whiteSpace: "nowrap",
+                  flexWrap: "wrap",
                 }}
               >
+                <h2
+                  style={{
+                    fontSize: "0.95rem",
+                    margin: 0,
+                    color: "#9ca3af",
+                  }}
+                >
+                  {selectedPlaylistName
+                    ? `Tracks in "${selectedPlaylistName}"`
+                    : "No playlist selected"}
+                </h2>
+
                 <button
                   onClick={() => setShowPlaylists((prev) => !prev)}
                   style={{
@@ -1616,33 +1616,34 @@ export default function Home() {
                 >
                   {showPlaylists ? "Hide playlists" : "Show playlists"}
                 </button>
-
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.3rem",
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={autoRemoveOnSend}
-                    onChange={(e) => setAutoRemoveOnSend(e.target.checked)}
-                    style={{
-                      width: "13px",
-                      height: "13px",
-                      accentColor: "#22c55e",
-                      cursor: "pointer",
-                    }}
-                  />
-                  <span>Remove on send</span>
-                </label>
               </div>
+
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  fontSize: "0.75rem",
+                  color: "#6b7280",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  whiteSpace: "nowrap",
+                  marginLeft: "auto",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={autoRemoveOnSend}
+                  onChange={(e) => setAutoRemoveOnSend(e.target.checked)}
+                  style={{
+                    width: "13px",
+                    height: "13px",
+                    accentColor: "#22c55e",
+                    cursor: "pointer",
+                  }}
+                />
+                <span>Remove on send</span>
+              </label>
             </div>
 
             {loadingTracks && selectedPlaylistId && (
@@ -2022,11 +2023,9 @@ export default function Home() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    window.open(
-                                      `https://open.spotify.com/track/${t.id}`,
-                                      "_blank",
-                                      "noopener,noreferrer"
-                                    );
+                                    // Open in same tab to avoid extra blank tab
+                                    window.location.href =
+                                      `https://open.spotify.com/track/${t.id}`;
                                   }}
                                   style={{
                                     padding: "0.2rem 0.6rem",
@@ -2078,17 +2077,17 @@ export default function Home() {
                               ? "1px solid #4b5563"
                               : "1px solid #111827",
                             background: "#020617",
-                            padding: "0.4rem 0.5rem 0.35rem",
+                            padding: "0.5rem 0.6rem 0.4rem",
                             display: "flex",
                             flexDirection: "column",
-                            gap: "0.3rem",
+                            gap: "0.35rem",
                           }}
                         >
                           <div
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: "0.55rem",
+                              gap: "0.7rem",
                             }}
                           >
                             <div
@@ -2102,9 +2101,9 @@ export default function Home() {
                                   src={t.albumImageUrl}
                                   alt={t.name}
                                   style={{
-                                    width: "54px",
-                                    height: "54px",
-                                    borderRadius: "0.5rem",
+                                    width: "76px", // ~40% bigger
+                                    height: "76px",
+                                    borderRadius: "0.6rem",
                                     objectFit: "cover",
                                   }}
                                 />
@@ -2119,8 +2118,8 @@ export default function Home() {
                                   position: "absolute",
                                   inset: 0,
                                   margin: "auto",
-                                  width: "26px",
-                                  height: "26px",
+                                  width: "36px", // ~40% bigger
+                                  height: "36px",
                                   borderRadius: "999px",
                                   border: "1px solid rgba(15,23,42,0.9)",
                                   background: isPlaying
@@ -2130,7 +2129,7 @@ export default function Home() {
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  fontSize: "0.75rem",
+                                  fontSize: "0.8rem",
                                   cursor: "pointer",
                                   boxShadow:
                                     "0 0 0 1px rgba(15,23,42,0.8), 0 4px 12px rgba(0,0,0,0.8)",
@@ -2149,11 +2148,11 @@ export default function Home() {
                               <div
                                 style={{
                                   fontWeight: 500,
-                                  fontSize: "0.9rem",
+                                  fontSize: "0.95rem",
                                   whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
-                                  marginBottom: "0.03rem",
+                                  marginBottom: "0.06rem",
                                 }}
                               >
                                 {t.name}
@@ -2171,7 +2170,7 @@ export default function Home() {
                               </div>
                               <div
                                 style={{
-                                  marginTop: "0.2rem",
+                                  marginTop: "0.25rem",
                                   fontSize: "0.7rem",
                                   color: "#6b7280",
                                   whiteSpace: "nowrap",
@@ -2192,27 +2191,17 @@ export default function Home() {
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "space-between",
+                              justifyContent: "flex-end",
                               marginTop: "0.05rem",
                             }}
                           >
-                            <span
-                              style={{
-                                fontSize: "0.7rem",
-                                color: "#6b7280",
-                              }}
-                            >
-                              Use slots 1–6 below to move this track.
-                            </span>
                             {isActiveForSpotify && t.id && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.open(
-                                    `https://open.spotify.com/track/${t.id}`,
-                                    "_blank",
-                                    "noopener,noreferrer"
-                                  );
+                                  // Same-tab navigation to avoid blank tab on mobile
+                                  window.location.href =
+                                    `https://open.spotify.com/track/${t.id}`;
                                 }}
                                 style={{
                                   padding: "0.18rem 0.55rem",
@@ -2247,7 +2236,7 @@ export default function Home() {
             style={{
               marginTop: "0.6rem",
               borderTop: "1px solid #1f2933",
-              paddingTop: "0.35rem",
+              paddingTop: "0.45rem",
             }}
           >
             {renderDestinationsConfig()}
@@ -2350,9 +2339,7 @@ export default function Home() {
 
                   const label =
                     slot.displayName ||
-                    (hasName
-                      ? "(unnamed)"
-                      : "No playlist");
+                    (hasName ? "(unnamed)" : "No playlist");
 
                   return (
                     <button
@@ -2367,8 +2354,8 @@ export default function Home() {
                         handleSendToDestination(slot.id, track);
                       }}
                       style={{
-                        padding: "0.3rem 0.35rem 0.32rem",
-                        borderRadius: "0.55rem",
+                        padding: "0.4rem 0.4rem 0.45rem",
+                        borderRadius: "0.6rem",
                         border: `1px solid ${borderColor}`,
                         background,
                         color,
