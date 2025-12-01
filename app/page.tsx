@@ -984,9 +984,11 @@ export default function Home() {
   const mobileDestGridStyle = {
     display: "grid",
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridAutoRows: "1fr",      // 🔹 make all rows share height
     gap: "0.45rem",
     marginTop: "0.4rem",
   };
+
 
   const mobileDestSheetOverlayStyle = {
     position: "fixed" as const,
@@ -2306,9 +2308,11 @@ export default function Home() {
                       flexDirection: "column",
                       alignItems: "flex-start",
                       justifyContent: "center",
+                      height: "100%",                // 🔹 fill grid cell
                       transition: "background 0.15s ease, transform 0.1s ease",
                       transform: isRecentlySent ? "scale(1.03)" : "scale(1)",
                     }}
+
                   >
                     <span
                       style={{
