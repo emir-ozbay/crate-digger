@@ -33,9 +33,5 @@ export async function GET(req: NextRequest) {
   console.log("DEBUG authUrl:", authUrl);
 
   // TEMP: return JSON instead of redirect so we can inspect
-  return NextResponse.json({
-    authUrl,
-    redirectUri,
-    scopes,
-  });
+  return NextResponse.redirect(authUrl);
 }
