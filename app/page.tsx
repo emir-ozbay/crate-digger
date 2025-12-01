@@ -404,27 +404,47 @@ export default function Home() {
 
     if (previewRequestIdRef.current !== myRequestId) return;
 
-    audioRef.current
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const applyOffset = () => {
+      if (previewRequestIdRef.current !== myRequestId) return;
+      const d = audio.duration;
+      if (Number.isFinite(d) && d > 0) {
+        const offset = Math.min(d * 0.3, Math.max(0, d - 1)); // 30%
+        try {
+          audio.currentTime = offset;
+        } catch {
+          // some browsers can throw if seek is too early; ignore
+        }
+      }
+    };
+
+    if (!Number.isFinite(audio.duration) || audio.duration === 0) {
+      const onLoaded = () => {
+        audio.removeEventListener("loadedmetadata", onLoaded);
+        applyOffset();
+      };
+      audio.addEventListener("loadedmetadata", onLoaded);
+    } else {
+      applyOffset();
+    }
+
+    audio
       .play()
       .then(() => {
-        if (previewRequestIdRef.current !== myRequestId) {
-          return;
+        if (previewRequestIdRef.current === myRequestId) {
+          setPlayingTrackId(track.id);
         }
-        const audio = audioRef.current;
-        if (audio) {
-          const d = audio.duration;
-          if (Number.isFinite(d) && d > 0) {
-            const offset = Math.min(d * 0.3, Math.max(0, d - 1));
-            audio.currentTime = offset;
-          }
-        }
-        setPlayingTrackId(track.id);
       })
       .catch((err: any) => {
-        if (err?.name === "AbortError") return;
+        if (err?.name === "AbortError") {
+          return;
+        }
         console.error("Audio play error:", err);
         followPlaybackRef.current = false;
       });
+
   };
 
   const handleTrackNameClick = (track: Track) => {
