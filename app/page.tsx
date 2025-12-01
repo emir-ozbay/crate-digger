@@ -46,7 +46,28 @@ const SLOT_COLORS: Record<number, string> = {
   6: "#ec4899", // pink
 };
 
+// Simple hook: is viewport width below breakpoint?
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const update = () => {
+      setIsMobile(window.innerWidth < breakpoint);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 export default function Home() {
+  const isMobile = useIsMobile();
+
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +121,7 @@ export default function Home() {
   // recent send for visual flash: {slotId, trackId}
   const [recentSend, setRecentSend] = useState<{
     slotId: number;
-    trackId: string;
+  trackId: string;
   } | null>(null);
 
   // Auto-remove from source playlist after successful send (or duplicate)
@@ -112,7 +133,7 @@ export default function Home() {
   // ref for tracks container to restore focus
   const tracksContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // show/hide playlist sidebar
+  // show/hide playlist sidebar (desktop) or playlist block (mobile)
   const [showPlaylists, setShowPlaylists] = useState(true);
 
   const focusTracks = () => {
@@ -387,10 +408,10 @@ export default function Home() {
           prev.map((t) =>
             t.id === track.id
               ? {
-                ...t,
-                bpm: bpm,
-                bpmStatus: bpm === null ? "error" : "idle",
-              }
+                  ...t,
+                  bpm: bpm,
+                  bpmStatus: bpm === null ? "error" : "idle",
+                }
               : t
           )
         );
@@ -563,12 +584,12 @@ export default function Home() {
         prev.map((s) =>
           s.id === slotId
             ? {
-              ...s,
-              mode: "existing",
-              playlistId: newPlaylist.id,
-              displayName: newPlaylist.name,
-              newName: "",
-            }
+                ...s,
+                mode: "existing",
+                playlistId: newPlaylist.id,
+                displayName: newPlaylist.name,
+                newName: "",
+              }
             : s
         )
       );
@@ -607,7 +628,8 @@ export default function Home() {
     }
 
     console.log(
-      `Sending track "${track.name}" to slot ${slotId} (playlist: ${slot.displayName || slot.playlistId
+      `Sending track "${track.name}" to slot ${slotId} (playlist: ${
+        slot.displayName || slot.playlistId || "unnamed"
       }).`
     );
 
@@ -928,25 +950,25 @@ export default function Home() {
     return (
       <>
         <style jsx global>{`
-        ::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #020617;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #1f2937;
-          border-radius: 999px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #4b5563;
-        }
-        body {
-          scrollbar-color: #1f2937 #020617;
-          scrollbar-width: thin;
-        }
-      `}</style>
+          ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          ::-webkit-scrollbar-track {
+            background: #020617;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 999px;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+          }
+          body {
+            scrollbar-color: #1f2937 #020617;
+            scrollbar-width: thin;
+          }
+        `}</style>
         <main
           style={{
             minHeight: "100vh",
@@ -980,11 +1002,67 @@ export default function Home() {
     );
   }
 
-
   // Only playlists owned by the current user can be used as destinations
   const ownedPlaylists: Playlist[] = currentUserId
     ? playlists.filter((pl) => pl.ownerId === currentUserId)
     : [];
+
+  // Layout styles that change on mobile vs desktop
+  const mainLayoutWrapperStyle = isMobile
+    ? {
+        display: "flex",
+        flexDirection: "column" as const,
+        gap: "0.9rem",
+        marginTop: "0.9rem",
+      }
+    : {
+        display: "flex",
+        gap: "1.25rem",
+        marginTop: "0.75rem",
+      };
+
+  const playlistPanelStyle = isMobile
+    ? {
+        flex: "0 0 auto",
+        maxHeight: "40vh",
+        width: "100%",
+        overflowY: "auto" as const,
+        border: "1px solid #1f2933",
+        borderRadius: "0.75rem",
+        padding: "0.75rem",
+        background: "#0b1020",
+      }
+    : {
+        flex: "0 0 260px",
+        maxHeight: "82vh",
+        overflowY: "auto" as const,
+        border: "1px solid #1f2933",
+        borderRadius: "0.75rem",
+        padding: "0.75rem",
+        background: "#0b1020",
+      };
+
+  const tracksPanelStyle = isMobile
+    ? {
+        flex: 1,
+        maxHeight: "calc(100vh - 260px)",
+        overflowY: "auto" as const,
+        border: "1px solid #1f2933",
+        borderRadius: "0.75rem",
+        padding: "0.7rem 0.9rem",
+        background: "#0b1020",
+        outline: "none",
+      }
+    : {
+        flex: 1,
+        maxHeight: "82vh",
+        overflowY: "auto" as const,
+        border: "1px solid #1f2933",
+        borderRadius: "0.75rem",
+        padding: "0.7rem 0.9rem",
+        background: "#0b1020",
+        outline: "none",
+      };
 
   return (
     <>
@@ -1013,7 +1091,7 @@ export default function Home() {
       <main
         style={{
           minHeight: "100vh",
-          padding: "1.4rem 2rem 0.2rem",
+          padding: isMobile ? "1rem 1.2rem 0.4rem" : "1.4rem 2rem 0.2rem",
           fontFamily: "sans-serif",
           background: "#050816",
           color: "#f9fafb",
@@ -1026,14 +1104,16 @@ export default function Home() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: "1rem",
-            marginBottom: "0.3rem",
+            marginBottom: isMobile ? "0.2rem" : "0.3rem",
           }}
         >
-          <h1 style={{ fontSize: "1.8rem" }}>Crate Digger</h1>
+          <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.8rem" }}>
+            Crate Digger
+          </h1>
           <button
             onClick={handleLogout}
             style={{
-              padding: "0.45rem 0.9rem",
+              padding: isMobile ? "0.35rem 0.8rem" : "0.45rem 0.9rem",
               borderRadius: "999px",
               border: "1px solid #4b5563",
               background: "#0b1020",
@@ -1047,27 +1127,11 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Main two-column layout */}
-        <div
-          style={{
-            display: "flex",
-            gap: "1.25rem",
-            marginTop: "0.75rem",
-          }}
-        >
-          {/* LEFT: Playlists (hideable) */}
+        {/* Main layout */}
+        <div style={mainLayoutWrapperStyle}>
+          {/* Playlists */}
           {showPlaylists && (
-            <div
-              style={{
-                flex: "0 0 260px",
-                maxHeight: "82vh",
-                overflowY: "auto",
-                border: "1px solid #1f2933",
-                borderRadius: "0.75rem",
-                padding: "0.75rem",
-                background: "#0b1020",
-              }}
-            >
+            <div style={playlistPanelStyle}>
               <h2
                 style={{
                   fontSize: "0.95rem",
@@ -1149,20 +1213,11 @@ export default function Home() {
             </div>
           )}
 
-          {/* RIGHT: Tracks */}
+          {/* Tracks */}
           <div
             ref={tracksContainerRef}
             tabIndex={-1}
-            style={{
-              flex: 1,
-              maxHeight: "82vh",
-              overflowY: "auto",
-              border: "1px solid #1f2933",
-              borderRadius: "0.75rem",
-              padding: "0.7rem 0.9rem",
-              background: "#0b1020",
-              outline: "none",
-            }}
+            style={tracksPanelStyle}
           >
             {/* Header row for tracks + playlists toggle + Remove on send */}
             <div
@@ -1172,6 +1227,7 @@ export default function Home() {
                 justifyContent: "space-between",
                 gap: "0.75rem",
                 marginBottom: "0.5rem",
+                flexWrap: "wrap",
               }}
             >
               <h2
@@ -1250,7 +1306,7 @@ export default function Home() {
 
             {!selectedPlaylistId && (
               <p style={{ color: "#9ca3af", fontSize: "0.85rem" }}>
-                Choose a playlist from the left.
+                Choose a playlist from the {isMobile ? "list above" : "left"}.
               </p>
             )}
 
@@ -1485,8 +1541,8 @@ export default function Home() {
                                   slot.mode === "existing"
                                     ? !!slot.playlistId
                                     : slot.mode === "new"
-                                      ? !!slot.displayName.trim()
-                                      : false;
+                                    ? !!slot.displayName.trim()
+                                    : false;
                                 const enabled =
                                   slot.mode === "existing" && !!slot.playlistId;
                                 const baseColor =
@@ -1505,8 +1561,8 @@ export default function Home() {
                                 const color = enabled
                                   ? "#020617"
                                   : hasName
-                                    ? "#9ca3af"
-                                    : "#4b5563";
+                                  ? "#9ca3af"
+                                  : "#4b5563";
                                 const borderColor = enabled
                                   ? baseColor
                                   : "#4b5563";
@@ -1537,13 +1593,14 @@ export default function Home() {
                                     }}
                                     title={
                                       enabled
-                                        ? `Send to slot ${slot.id} (${slot.displayName ||
-                                        slot.playlistId ||
-                                        "unnamed"
-                                        })`
+                                        ? `Send to slot ${slot.id} (${
+                                            slot.displayName ||
+                                            slot.playlistId ||
+                                            "unnamed"
+                                          })`
                                         : hasName
-                                          ? `Create/select playlist for slot ${slot.id} first`
-                                          : `Configure slot ${slot.id} in the Destinations section below`
+                                        ? `Create/select playlist for slot ${slot.id} first`
+                                        : `Configure slot ${slot.id} in the Destinations section below`
                                     }
                                   >
                                     {slot.id}
@@ -1661,8 +1718,8 @@ export default function Home() {
                 slot.mode === "existing" && slot.playlistId
                   ? slot.playlistId
                   : slot.mode === "new"
-                    ? "__new__"
-                    : "";
+                  ? "__new__"
+                  : "";
 
               const color = SLOT_COLORS[slot.id] || "#4b5563";
               const isSourcePlaylist =
