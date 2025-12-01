@@ -1169,20 +1169,18 @@ export default function Home() {
               }}
             />
 
-            {/* Cover + select in one row */}
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: "0.6rem",
-                marginBottom: "0.4rem",
+                alignItems: "flex-start",
+                gap: "0.7rem",
               }}
             >
               <div
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "0.45rem",
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "0.6rem",
                   background: "#020617",
                   border: "1px solid #1f2933",
                   overflow: "hidden",
@@ -1201,6 +1199,7 @@ export default function Home() {
                   />
                 )}
               </div>
+
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div
                   style={{
@@ -1212,6 +1211,7 @@ export default function Home() {
                 >
                   Slot {slot.id}
                 </div>
+
                 <select
                   value={selectValue}
                   onChange={(e) => {
@@ -1249,78 +1249,81 @@ export default function Home() {
                       </option>
                     )}
                 </select>
-              </div>
-            </div>
 
-            {isSourcePlaylist && (
-              <div
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#f87171",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                This is the source playlist (send is disabled).
-              </div>
-            )}
+                {isSourcePlaylist && (
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#f87171",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    This is the source playlist (send is disabled).
+                  </div>
+                )}
 
-            {slot.mode === "new" && (
-              <div style={{ marginBottom: "0.4rem" }}>
+                {slot.mode === "new" && (
+                  <div style={{ marginTop: "0.35rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.4rem",
+                        alignItems: "center",
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={slot.newName}
+                        onChange={(e) =>
+                          handleDestinationNewNameChange(
+                            slot.id,
+                            e.target.value
+                          )
+                        }
+                        placeholder="e.g. Crate Digger Picks"
+                        style={{
+                          flex: 1,
+                          padding: "0.38rem 0.6rem",
+                          borderRadius: "0.6rem",
+                          border: "1px solid #374151",
+                          background: "#020617",
+                          color: "#e5e7eb",
+                          fontSize: "0.8rem",
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          handleCreatePlaylistForSlot(slot.id);
+                          focusTracks();
+                        }}
+                        style={{
+                          padding: "0.3rem 0.55rem",
+                          borderRadius: "0.6rem",
+                          border: "1px solid #4b5563",
+                          background: "#111827",
+                          color: "#e5e7eb",
+                          fontSize: "0.9rem",
+                          cursor: "pointer",
+                          lineHeight: 1,
+                        }}
+                        title="Create playlist with this name"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div
                   style={{
-                    display: "flex",
-                    gap: "0.4rem",
-                    alignItems: "center",
+                    fontSize: "0.75rem",
+                    color: "#6b7280",
+                    marginTop: "0.35rem",
                   }}
                 >
-                  <input
-                    type="text"
-                    value={slot.newName}
-                    onChange={(e) =>
-                      handleDestinationNewNameChange(slot.id, e.target.value)
-                    }
-                    placeholder="e.g. Crate Digger Picks"
-                    style={{
-                      flex: 1,
-                      padding: "0.38rem 0.6rem",
-                      borderRadius: "0.6rem",
-                      border: "1px solid #374151",
-                      background: "#020617",
-                      color: "#e5e7eb",
-                      fontSize: "0.8rem",
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      handleCreatePlaylistForSlot(slot.id);
-                      focusTracks();
-                    }}
-                    style={{
-                      padding: "0.3rem 0.55rem",
-                      borderRadius: "0.6rem",
-                      border: "1px solid #4b5563",
-                      background: "#111827",
-                      color: "#e5e7eb",
-                      fontSize: "0.9rem",
-                      cursor: "pointer",
-                      lineHeight: 1,
-                    }}
-                    title="Create playlist with this name"
-                  >
-                    +
-                  </button>
+                  Sent this session: {slot.sentTrackIds.length}
                 </div>
               </div>
-            )}
-
-            <div
-              style={{
-                fontSize: "0.75rem",
-                color: "#6b7280",
-                marginTop: "0.2rem",
-              }}
-            >
-              Sent this session: {slot.sentTrackIds.length}
             </div>
           </div>
         );
@@ -2030,49 +2033,60 @@ export default function Home() {
                                 border: "none",
                                 background: "transparent",
                                 cursor: "pointer",
-                                position: "relative",
                                 width: "100%",
                                 justifySelf: "flex-start",
+                                display: "flex",
+                                justifyContent: "flex-start",
                               }}
                             >
-                              {t.albumImageUrl && (
-                                <img
-                                  src={t.albumImageUrl}
-                                  alt={t.name}
-                                  style={{
-                                    width: "100%",
-                                    maxWidth: "74px",
-                                    borderRadius: "0.6rem",
-                                    objectFit: "cover",
-                                    aspectRatio: "1 / 1",
-                                    display: "block",
-                                  }}
-                                />
-                              )}
                               <div
                                 style={{
-                                  position: "absolute",
-                                  inset: 0,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  pointerEvents: "none",
+                                  position: "relative",
+                                  width: "64px",
+                                  height: "64px",
+                                  borderRadius: "0.6rem",
+                                  overflow: "hidden",
+                                  background: "#020617",
+                                  border: "1px solid #111827",
                                 }}
                               >
+                                {t.albumImageUrl && (
+                                  <img
+                                    src={t.albumImageUrl}
+                                    alt={t.name}
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                      display: "block",
+                                    }}
+                                  />
+                                )}
                                 <div
                                   style={{
-                                    width: "30px",
-                                    height: "30px",
-                                    borderRadius: "999px",
-                                    background: "rgba(15,23,42,0.78)",
+                                    position: "absolute",
+                                    inset: 0,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    fontSize: "0.85rem",
-                                    color: "#f9fafb",
+                                    pointerEvents: "none",
                                   }}
                                 >
-                                  {isPlaying ? "⏹" : "▶"}
+                                  <div
+                                    style={{
+                                      width: "26px",
+                                      height: "26px",
+                                      borderRadius: "999px",
+                                      background: "rgba(15,23,42,0.6)",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontSize: "0.9rem",
+                                      color: "#f9fafb",
+                                    }}
+                                  >
+                                    {isPlaying ? "❚❚" : "▶"}
+                                  </div>
                                 </div>
                               </div>
                             </button>
